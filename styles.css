@@ -1,0 +1,292 @@
+:root {
+    color-scheme: light;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #172b3d;
+    background: #eef4f8;
+    font-synthesis: none;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+.page {
+    width: min(100% - 24px, 960px);
+    margin: 0 auto;
+    padding: 24px 0 36px;
+}
+
+.page-header,
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.page-header {
+    margin: 0 2px 20px;
+}
+
+.eyebrow {
+    margin: 0 0 4px;
+    color: #45718f;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+h1,
+h2,
+h3,
+p {
+    margin-top: 0;
+}
+
+h1 {
+    margin-bottom: 0;
+    color: #123b63;
+    font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+h2 {
+    margin-bottom: 4px;
+    color: #123b63;
+    font-size: 1.3rem;
+}
+
+h3 {
+    color: #234d6d;
+    font-size: 1rem;
+}
+
+.panel {
+    padding: 22px;
+    border: 1px solid #dce7ef;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgb(18 59 99 / 6%);
+}
+
+.login-panel {
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+.muted,
+.footer-note {
+    color: #607789;
+    line-height: 1.5;
+}
+
+.muted {
+    margin-bottom: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 20px;
+}
+
+.field {
+    display: grid;
+    gap: 7px;
+    color: #294c65;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.field-wide {
+    grid-column: 1 / -1;
+}
+
+input,
+select {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 11px;
+    border: 1px solid #c9d7e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #172b3d;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+    outline: 3px solid rgb(36 130 190 / 25%);
+    outline-offset: 2px;
+}
+
+.button,
+.tab {
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: #123b63;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.button:hover,
+.tab:hover {
+    background: #1b5786;
+}
+
+.button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.button-secondary,
+.button-light {
+    background: #dcecf7;
+    color: #123b63;
+}
+
+.button-secondary:hover,
+.button-light:hover {
+    background: #c8e0f1;
+}
+
+.tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.tab {
+    background: #dcecf7;
+    color: #123b63;
+}
+
+.tab.active {
+    background: #123b63;
+    color: #fff;
+}
+
+.module h2 {
+    margin-bottom: 2px;
+}
+
+.section-heading {
+    margin-bottom: 18px;
+}
+
+.list-heading {
+    margin: 24px 0 10px;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow: auto;
+    border: 1px solid #dce7ef;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 0.85rem;
+}
+
+th,
+td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #e2ebf1;
+    text-align: left;
+    white-space: nowrap;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    background: #eaf3f9;
+    color: #234d6d;
+}
+
+tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.total {
+    margin: 0;
+    color: #123b63;
+    font-weight: 700;
+}
+
+.notice {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #e6f4ea;
+    color: #205b35;
+    line-height: 1.45;
+}
+
+.notice.error {
+    background: #fff0ef;
+    color: #8c2d25;
+}
+
+.empty {
+    padding: 16px;
+    color: #607789;
+    text-align: center;
+}
+
+.footer-note {
+    margin: 18px 2px 0;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .page {
+        width: min(100% - 16px, 520px);
+        padding-top: 14px;
+    }
+
+    .panel {
+        padding: 16px;
+        border-radius: 11px;
+    }
+
+    .tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-grid {
+        gap: 12px;
+    }
+
+    .section-heading {
+        align-items: flex-start;
+    }
+
+    th,
+    td {
+        padding: 8px;
+    }
+}

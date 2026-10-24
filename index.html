@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#123b63">
+    <title>Gestión Médica</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="page">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">GESTIÓN MÉDICA</p>
+                <h1>Administración</h1>
+            </div>
+            <button id="sign-out" class="button button-light hidden" type="button">Cerrar sesión</button>
+        </header>
+
+        <section id="login-panel" class="panel login-panel">
+            <h2>Iniciar sesión</h2>
+            <p class="muted">Ingresa con el usuario autorizado para consultar y registrar información.</p>
+            <form id="login-form" class="form-grid">
+                <label class="field field-wide">
+                    Correo electrónico
+                    <input id="login-email" type="email" autocomplete="username" required>
+                </label>
+                <label class="field field-wide">
+                    Contraseña
+                    <input id="login-password" type="password" autocomplete="current-password" required>
+                </label>
+                <button class="button field-wide" type="submit">Entrar</button>
+            </form>
+        </section>
+
+        <section id="app-panel" class="hidden">
+            <nav class="tabs" aria-label="Módulos">
+                <button class="tab active" type="button" data-section="inventario">Inventario</button>
+                <button class="tab" type="button" data-section="compras">Compras</button>
+                <button class="tab" type="button" data-section="ventas">Ventas</button>
+                <button class="tab" type="button" data-section="contabilidad">Contabilidad</button>
+            </nav>
+
+            <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
+
+            <section id="section-inventario" class="panel module">
+                <div class="section-heading">
+                    <div>
+                        <h2>Inventario</h2>
+                        <p class="muted">Existencias y precios actuales.</p>
+                    </div>
+                    <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar</button>
+                </div>
+                <div id="table-inventario" class="table-wrap"></div>
+            </section>
+
+            <section id="section-compras" class="panel module hidden">
+                <div class="section-heading">
+                    <div>
+                        <h2>Compras</h2>
+                        <p class="muted">Registra productos nuevos o repón existencias.</p>
+                    </div>
+                    <button class="button button-secondary refresh" type="button" data-table="compras">Actualizar</button>
+                </div>
+                <form id="purchase-form" class="form-grid">
+                    <label class="field">
+                        Tipo de compra
+                        <select id="purchase-mode">
+                            <option value="existing">Producto existente</option>
+                            <option value="new">Producto nuevo</option>
+                        </select>
+                    </label>
+                    <label id="purchase-product-field" class="field">
+                        Producto
+                        <select id="purchase-product" required></select>
+                    </label>
+                    <label id="purchase-code-field" class="field hidden">
+                        Código del producto nuevo
+                        <input id="purchase-code" maxlength="80" autocomplete="off">
+                    </label>
+                    <label id="purchase-description-field" class="field hidden">
+                        Descripción
+                        <input id="purchase-description" maxlength="250" autocomplete="off">
+                    </label>
+                    <label class="field">
+                        Precio de compra (US$)
+                        <input id="purchase-cost" type="number" min="0" step="0.01" required>
+                    </label>
+                    <label class="field">
+                        Precio de venta (US$)
+                        <input id="purchase-price" type="number" min="0" step="0.01" required>
+                    </label>
+                    <label class="field">
+                        Cantidad
+                        <input id="purchase-quantity" type="number" min="1" step="1" required>
+                    </label>
+                    <label class="field">
+                        Fecha de vencimiento
+                        <input id="purchase-expiry" type="date">
+                    </label>
+                    <button class="button field-wide" type="submit">Guardar compra</button>
+                </form>
+                <h3 class="list-heading">Compras registradas</h3>
+                <div id="table-compras" class="table-wrap"></div>
+            </section>
+
+            <section id="section-ventas" class="panel module hidden">
+                <div class="section-heading">
+                    <div>
+                        <h2>Ventas</h2>
+                        <p class="muted">La venta descuenta existencias y se guarda en un solo proceso.</p>
+                    </div>
+                    <button class="button button-secondary refresh" type="button" data-table="ventas">Actualizar</button>
+                </div>
+                <form id="sale-form" class="form-grid">
+                    <label class="field field-wide">
+                        Producto disponible
+                        <select id="sale-product" required></select>
+                    </label>
+                    <label class="field">
+                        Precio de venta (US$)
+                        <input id="sale-price" type="number" min="0" step="0.01" required>
+                    </label>
+                    <label class="field">
+                        Cantidad
+                        <input id="sale-quantity" type="number" min="1" step="1" required>
+                    </label>
+                    <p id="sale-total" class="total field-wide">Total: US$ 0.00</p>
+                    <button class="button field-wide" type="submit">Registrar venta</button>
+                </form>
+                <h3 class="list-heading">Ventas registradas</h3>
+                <div id="table-ventas" class="table-wrap"></div>
+            </section>
+
+            <section id="section-contabilidad" class="panel module hidden">
+                <div class="section-heading">
+                    <div>
+                        <h2>Contabilidad</h2>
+                        <p class="muted">Registra ingresos y egresos.</p>
+                    </div>
+                    <button class="button button-secondary refresh" type="button" data-table="contabilidad">Actualizar</button>
+                </div>
+                <form id="accounting-form" class="form-grid">
+                    <label class="field">
+                        Fecha
+                        <input id="accounting-date" type="date" required>
+                    </label>
+                    <label class="field">
+                        Descripción
+                        <input id="accounting-description" maxlength="250" required>
+                    </label>
+                    <label class="field">
+                        Monto
+                        <input id="accounting-amount" type="number" min="0" step="0.01" required>
+                    </label>
+                    <label class="field">
+                        Moneda
+                        <select id="accounting-currency">
+                            <option>Bs.</option>
+                            <option>USD</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        Tasa BCV
+                        <input id="accounting-rate" type="number" min="0" step="0.0001" value="0" required>
+                    </label>
+                    <label class="field">
+                        Tipo de pago
+                        <select id="accounting-payment-type">
+                            <option>Ingreso</option>
+                            <option>Egreso</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        Método de pago
+                        <select id="accounting-method">
+                            <option>Efectivo</option>
+                            <option>Transferencia</option>
+                            <option>Zelle</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        Tipo de servicio
+                        <select id="accounting-service">
+                            <option>Venta</option>
+                            <option>Alquiler</option>
+                            <option>Gasto</option>
+                            <option>Compra</option>
+                        </select>
+                    </label>
+                    <button class="button field-wide" type="submit">Guardar registro</button>
+                </form>
+                <h3 class="list-heading">Registros contables</h3>
+                <div id="table-contabilidad" class="table-wrap"></div>
+            </section>
+        </section>
+        <p class="footer-note">Tus datos se consultan en Supabase después de iniciar sesión.</p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
