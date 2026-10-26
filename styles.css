@@ -189,6 +189,42 @@ button:focus-visible {
     margin-bottom: 18px;
 }
 
+.inventory-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.import-help {
+    margin: -4px 0 14px;
+    font-size: 0.9rem;
+}
+
+.import-preview {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid #dce7ef;
+    border-radius: 8px;
+    background: #f5f9fc;
+    line-height: 1.45;
+}
+
+.import-preview p {
+    margin-bottom: 8px;
+}
+
+.import-preview ul {
+    margin: 0 0 8px;
+    padding-left: 22px;
+}
+
 .list-heading {
     margin: 24px 0 10px;
 }
@@ -285,10 +321,14 @@ tbody tr:last-child td {
         align-items: flex-start;
     }
 
+    .inventory-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
     th,
     td {
         padding: 8px;
     }
 }
-
-

@@ -49,7 +49,22 @@
                         <h2>Inventario</h2>
                         <p class="muted">Existencias y precios actuales.</p>
                     </div>
-                    <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar</button>
+                    <div class="inventory-actions">
+                        <button id="export-inventory" class="button button-secondary" type="button">Exportar CSV para Excel</button>
+                        <label class="button button-secondary import-button" for="import-inventory">Importar CSV</label>
+                        <input id="import-inventory" class="hidden" type="file" accept=".csv,text/csv">
+                        <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar</button>
+                    </div>
+                </div>
+                <p class="muted import-help">La importación reemplaza los datos y las existencias de los códigos existentes. Las filas nuevas sin código reciben uno automáticamente. No crea registros de compras ni contabilidad.</p>
+                <div id="inventory-import-preview" class="import-preview hidden" role="region" aria-label="Vista previa de importación">
+                    <p id="inventory-import-summary"></p>
+                    <ul id="inventory-import-items"></ul>
+                    <p id="inventory-import-more" class="muted"></p>
+                    <div class="inventory-actions">
+                        <button id="confirm-inventory-import" class="button" type="button">Confirmar importación</button>
+                        <button id="cancel-inventory-import" class="button button-secondary" type="button">Cancelar</button>
+                    </div>
                 </div>
                 <div id="table-inventario" class="table-wrap"></div>
             </section>
