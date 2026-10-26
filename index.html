@@ -158,6 +158,63 @@
                     </div>
                     <button class="button button-secondary refresh" type="button" data-table="contabilidad">Actualizar</button>
                 </div>
+                <section class="accounting-block" aria-labelledby="accounting-filters-title">
+                    <h3 id="accounting-filters-title">Filtros y búsqueda</h3>
+                    <div class="form-grid accounting-filter-grid">
+                        <label class="field">
+                            Desde
+                            <input id="accounting-filter-from" type="date">
+                        </label>
+                        <label class="field">
+                            Hasta
+                            <input id="accounting-filter-to" type="date">
+                        </label>
+                        <label class="field field-wide">
+                            Buscar por descripción o servicio
+                            <input id="accounting-search" type="search" maxlength="250">
+                        </label>
+                        <div class="inventory-actions field-wide">
+                            <button id="accounting-apply-filter" class="button" type="button">Aplicar filtro</button>
+                            <button id="accounting-show-all" class="button button-secondary" type="button">Ver todos</button>
+                            <button id="accounting-search-button" class="button button-secondary" type="button">Buscar</button>
+                            <button id="accounting-clear-search" class="button button-secondary" type="button">Limpiar búsqueda</button>
+                            <button id="accounting-export" class="button button-secondary" type="button">Exportar CSV</button>
+                        </div>
+                    </div>
+                </section>
+                <section class="accounting-block" aria-labelledby="accounting-summary-title">
+                    <h3 id="accounting-summary-title">Resumen financiero del filtro</h3>
+                    <div class="accounting-summary">
+                        <article class="accounting-card">
+                            <h4>Ingresos Bs.</h4>
+                            <p id="accounting-income-bs">Bs. 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Egresos Bs.</h4>
+                            <p id="accounting-expense-bs">Bs. 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Saldo Bs.</h4>
+                            <p id="accounting-balance-bs">Bs. 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Ingresos USD</h4>
+                            <p id="accounting-income-usd">US$ 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Egresos USD</h4>
+                            <p id="accounting-expense-usd">US$ 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Saldo USD</h4>
+                            <p id="accounting-balance-usd">US$ 0,00</p>
+                        </article>
+                        <article class="accounting-card">
+                            <h4>Registros</h4>
+                            <p id="accounting-record-count">0</p>
+                        </article>
+                    </div>
+                </section>
                 <form id="accounting-form" class="form-grid">
                     <label class="field">
                         Fecha
@@ -206,10 +263,30 @@
                             <option>Compra</option>
                         </select>
                     </label>
-                    <button class="button field-wide" type="submit">Guardar registro</button>
+                    <label class="field">
+                        Monto equivalente en USD
+                        <input id="accounting-usd-amount" type="number" readonly>
+                    </label>
+                    <label class="field field-wide">
+                        Observaciones
+                        <textarea id="accounting-observations" maxlength="1000" rows="3"></textarea>
+                    </label>
+                    <div class="inventory-actions field-wide">
+                        <button id="accounting-save" class="button" type="submit">Guardar registro</button>
+                        <button id="accounting-reset" class="button button-secondary" type="button">Limpiar formulario</button>
+                    </div>
                 </form>
-                <h3 class="list-heading">Registros contables</h3>
-                <div id="table-contabilidad" class="table-wrap"></div>
+                <section class="accounting-block" aria-labelledby="accounting-reports-title">
+                    <h3 id="accounting-reports-title">Auditoría y reportes</h3>
+                    <div class="inventory-actions accounting-report-actions">
+                        <button class="button button-secondary accounting-report" type="button" data-report="control">Control de registro</button>
+                        <button class="button button-secondary accounting-report" type="button" data-report="daily">Detalle diario de caja</button>
+                        <button class="button button-secondary accounting-report" type="button" data-report="monthly">Detalle mensual de caja</button>
+                        <button class="button button-secondary accounting-report" type="button" data-report="monthly-summary">Resumen mensual de caja</button>
+                    </div>
+                    <h4 id="accounting-report-title" class="list-heading">Registros contables</h4>
+                    <div id="table-contabilidad" class="table-wrap"></div>
+                </section>
             </section>
         </section>
         <p class="footer-note">Tus datos se consultan en Supabase después de iniciar sesión.</p>

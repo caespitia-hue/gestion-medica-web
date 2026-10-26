@@ -8,14 +8,17 @@
     const notice = document.getElementById("notice");
     const signOutButton = document.getElementById("sign-out");
     const productsByCode = new Map();
+    const accountingRecords = [];
     let client;
     let pendingInventoryImport = null;
+    let editingAccountingId = null;
+    let accountingReportName = "control";
 
     const tableColumns = {
         inventario: ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
         compras: ["identificacion", "codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
         ventas: ["identificacion", "codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
-        contabilidad: ["identificacion", "fecha", "descripcion", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio"]
+        contabilidad: ["id", "fecha", "descripcion", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
 
     function showNotice(message, isError) {
@@ -117,6 +120,27 @@
 
     async function loadTable(tableName) {
         clearNotice();
+        if (tableName === "contabilidad") {
+            accountingRecords.length = 0;
+            const pageSize = 1000;
+            for (let offset = 0; ; offset += pageSize) {
+                const result = await client.from(tableName)
+                    .select("*")
+                    .order("fecha", { ascending: false })
+                    .order("id", { ascending: false })
+                    .range(offset, offset + pageSize - 1);
+                if (result.error) {
+                    throw result.error;
+                }
+                accountingRecords.push.apply(accountingRecords, result.data || []);
+                if (!result.data || result.data.length < pageSize) {
+                    break;
+                }
+            }
+            renderAccountingView();
+            return;
+        }
+
         const query = client.from(tableName).select("*").limit(200);
         if (tableName === "inventario") {
             query.order("codigo", { ascending: true });
@@ -378,6 +402,370 @@
         }
     }
 
+    function accountingDate(record) {
+        return String(record.fecha || "").slice(0, 10);
+    }
+
+    function getFilteredAccountingRecords() {
+        const from = document.getElementById("accounting-filter-from").value;
+        const to = document.getElementById("accounting-filter-to").value;
+        const search = document.getElementById("accounting-search").value.trim().toLocaleLowerCase();
+        return accountingRecords.filter(function (record) {
+            const date = accountingDate(record);
+            if (from && date < from) {
+                return false;
+            }
+            if (to && date > to) {
+                return false;
+            }
+            if (search) {
+                const searchable = (record.descripcion || "").toLocaleLowerCase()
+                    + " " + (record.tipo_servicio || "").toLocaleLowerCase();
+                if (!searchable.includes(search)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    function formatAccountingAmount(value, currency) {
+        const amount = Number(value);
+        const formatted = (Number.isFinite(amount) ? amount : 0)
+            .toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (currency === "USD" ? "US$ " : "Bs. ") + formatted;
+    }
+
+    function amountInRecordCurrency(record) {
+        return Number(record.monto) || 0;
+    }
+
+    function amountInUSD(record) {
+        const stored = Number(record.monto_usd);
+        if (record.monto_usd !== null && record.monto_usd !== undefined && Number.isFinite(stored)) {
+            return stored;
+        }
+        if (record.moneda === "USD") {
+            return amountInRecordCurrency(record);
+        }
+        const rate = Number(record.tasa_bcv) || 0;
+        return rate > 0 ? amountInRecordCurrency(record) / rate : 0;
+    }
+
+    function updateAccountingSummary(records) {
+        const totals = {
+            incomeBs: 0,
+            expenseBs: 0,
+            incomeUsd: 0,
+            expenseUsd: 0
+        };
+        records.forEach(function (record) {
+            const amount = amountInRecordCurrency(record);
+            if (record.moneda === "Bs.") {
+                if (record.tipo_pago === "Ingreso") {
+                    totals.incomeBs += amount;
+                } else {
+                    totals.expenseBs += amount;
+                }
+            } else if (record.moneda === "USD") {
+                if (record.tipo_pago === "Ingreso") {
+                    totals.incomeUsd += amountInUSD(record);
+                } else {
+                    totals.expenseUsd += amountInUSD(record);
+                }
+            }
+        });
+
+        document.getElementById("accounting-income-bs").textContent = formatAccountingAmount(totals.incomeBs, "Bs.");
+        document.getElementById("accounting-expense-bs").textContent = formatAccountingAmount(totals.expenseBs, "Bs.");
+        document.getElementById("accounting-balance-bs").textContent =
+            formatAccountingAmount(totals.incomeBs - totals.expenseBs, "Bs.");
+        document.getElementById("accounting-income-usd").textContent = formatAccountingAmount(totals.incomeUsd, "USD");
+        document.getElementById("accounting-expense-usd").textContent = formatAccountingAmount(totals.expenseUsd, "USD");
+        document.getElementById("accounting-balance-usd").textContent =
+            formatAccountingAmount(totals.incomeUsd - totals.expenseUsd, "USD");
+        document.getElementById("accounting-record-count").textContent = String(records.length);
+    }
+
+    function appendTable(container, headers, rows, actionRows) {
+        container.replaceChildren();
+        if (!rows.length) {
+            const empty = document.createElement("p");
+            empty.className = "empty";
+            empty.textContent = "No hay registros para los filtros seleccionados.";
+            container.append(empty);
+            return;
+        }
+
+        const table = document.createElement("table");
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        headers.forEach(function (header) {
+            const cell = document.createElement("th");
+            cell.scope = "col";
+            cell.textContent = header;
+            headRow.append(cell);
+        });
+        if (actionRows) {
+            const actionHeader = document.createElement("th");
+            actionHeader.scope = "col";
+            actionHeader.textContent = "Acciones";
+            headRow.append(actionHeader);
+        }
+        head.append(headRow);
+
+        const body = document.createElement("tbody");
+        rows.forEach(function (row) {
+            const rowElement = document.createElement("tr");
+            row.values.forEach(function (value) {
+                const cell = document.createElement("td");
+                cell.textContent = displayValue(value);
+                rowElement.append(cell);
+            });
+            if (actionRows) {
+                const actionCell = document.createElement("td");
+                const editButton = document.createElement("button");
+                editButton.className = "button button-secondary table-action";
+                editButton.type = "button";
+                editButton.dataset.action = "edit";
+                editButton.dataset.recordId = String(row.record.id);
+                editButton.textContent = "Editar";
+                const deleteButton = document.createElement("button");
+                deleteButton.className = "button button-danger table-action";
+                deleteButton.type = "button";
+                deleteButton.dataset.action = "delete";
+                deleteButton.dataset.recordId = String(row.record.id);
+                deleteButton.textContent = "Eliminar";
+                actionCell.append(editButton, deleteButton);
+                rowElement.append(actionCell);
+            }
+            body.append(rowElement);
+        });
+        table.append(head, body);
+        container.append(table);
+    }
+
+    function renderAccountingView() {
+        const records = getFilteredAccountingRecords();
+        updateAccountingSummary(records);
+        renderAccountingReport(accountingReportName, records);
+    }
+
+    function accountingReportValue(record, amount) {
+        const currency = record.moneda === "USD" ? "USD" : "Bs.";
+        return formatAccountingAmount(amount, currency);
+    }
+
+    function renderAccountingReport(reportName, sourceRecords) {
+        const container = document.getElementById("table-contabilidad");
+        const records = sourceRecords || getFilteredAccountingRecords();
+        const reportTitle = document.getElementById("accounting-report-title");
+        const reportFrom = document.getElementById("accounting-filter-from").value;
+        const reportTo = document.getElementById("accounting-filter-to").value;
+        let headers;
+        let rows;
+        let editable = false;
+
+        if (reportName === "control") {
+            reportTitle.textContent = "Control de registro";
+            headers = ["ID", "Fecha", "Descripción", "Monto", "Moneda", "Tasa BCV", "Método", "Tipo de pago", "Servicio", "Monto USD", "Observaciones"];
+            rows = records.map(function (record) {
+                return {
+                    record: record,
+                    values: [
+                        record.id,
+                        accountingDate(record),
+                        record.descripcion,
+                        accountingReportValue(record, amountInRecordCurrency(record)),
+                        record.moneda,
+                        record.tasa_bcv,
+                        record.metodo_pago,
+                        record.tipo_pago,
+                        record.tipo_servicio,
+                        formatAccountingAmount(amountInUSD(record), "USD"),
+                        record.observaciones
+                    ]
+                };
+            });
+            editable = true;
+        } else if (reportName === "daily") {
+            reportTitle.textContent = "Detalle diario de caja";
+            headers = [
+                "Fecha", "Descripción", "Ing. Bs (efectivo)", "Ing. Bs (transfer./Zelle)",
+                "Ing. USD (efectivo)", "Ing. USD (transfer./Zelle)", "Egr. Bs (efectivo)",
+                "Egr. Bs (transfer./Zelle)", "Egr. USD (efectivo)", "Egr. USD (transfer./Zelle)",
+                "Observaciones"
+            ];
+            rows = records.map(function (record) {
+                const isBs = record.moneda === "Bs.";
+                const isIncome = record.tipo_pago === "Ingreso";
+                const isCash = record.metodo_pago === "Efectivo";
+                const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                const values = Array(8).fill("—");
+                let index;
+                if (isIncome) {
+                    index = isBs ? (isCash ? 0 : 1) : (isCash ? 2 : 3);
+                } else {
+                    index = isBs ? (isCash ? 4 : 5) : (isCash ? 6 : 7);
+                }
+                values[index] = formatAccountingAmount(amount, isBs ? "Bs." : "USD");
+                return {
+                    values: [accountingDate(record), record.descripcion].concat(values, [record.observaciones])
+                };
+            });
+        } else if (reportName === "monthly") {
+            reportTitle.textContent = "Detalle mensual de caja";
+            headers = ["Mes", "Descripción", "Moneda", "Ingresos", "Egresos", "Saldo", "Observaciones"];
+            rows = records.map(function (record) {
+                const income = record.tipo_pago === "Ingreso";
+                const amount = amountInRecordCurrency(record);
+                return {
+                    values: [
+                        accountingDate(record).slice(0, 7),
+                        record.descripcion,
+                        record.moneda,
+                        formatAccountingAmount(income ? amount : 0, record.moneda),
+                        formatAccountingAmount(income ? 0 : amount, record.moneda),
+                        formatAccountingAmount(income ? amount : -amount, record.moneda),
+                        record.observaciones
+                    ]
+                };
+            });
+        } else {
+            reportTitle.textContent = "Resumen mensual de caja";
+            headers = ["Mes", "Descripción", "Ingreso Bs.", "Egreso Bs.", "Ingreso USD", "Egreso USD", "Observaciones"];
+            rows = records.map(function (record) {
+                const isIncome = record.tipo_pago === "Ingreso";
+                const isBs = record.moneda === "Bs.";
+                const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                return {
+                    values: [
+                        accountingDate(record).slice(0, 7),
+                        record.descripcion,
+                        formatAccountingAmount(isBs && isIncome ? amount : 0, "Bs."),
+                        formatAccountingAmount(isBs && !isIncome ? amount : 0, "Bs."),
+                        formatAccountingAmount(!isBs && isIncome ? amount : 0, "USD"),
+                        formatAccountingAmount(!isBs && !isIncome ? amount : 0, "USD"),
+                        record.observaciones
+                    ]
+                };
+            });
+        }
+
+        if (reportFrom || reportTo) {
+            const period = reportFrom && reportTo
+                ? " (" + reportFrom + " a " + reportTo + ")"
+                : " (" + (reportFrom ? "desde " + reportFrom : "hasta " + reportTo) + ")";
+            reportTitle.textContent += period;
+        }
+        appendTable(container, headers, rows, editable);
+    }
+
+    function updateAccountingUsdAmount() {
+        const amount = Number(document.getElementById("accounting-amount").value);
+        const rate = Number(document.getElementById("accounting-rate").value);
+        const currency = document.getElementById("accounting-currency").value;
+        let usdAmount = 0;
+        if (Number.isFinite(amount) && amount >= 0) {
+            if (currency === "USD") {
+                usdAmount = amount;
+            } else if (Number.isFinite(rate) && rate > 0) {
+                usdAmount = amount / rate;
+            }
+        }
+        document.getElementById("accounting-usd-amount").value = usdAmount.toFixed(2);
+    }
+
+    function resetAccountingForm() {
+        editingAccountingId = null;
+        const form = document.getElementById("accounting-form");
+        form.reset();
+        document.getElementById("accounting-date").value = localDateISO();
+        document.getElementById("accounting-currency").value = "Bs.";
+        document.getElementById("accounting-payment-type").value = "Ingreso";
+        document.getElementById("accounting-method").value = "Efectivo";
+        document.getElementById("accounting-service").value = "Venta";
+        document.getElementById("accounting-rate").value = "0";
+        document.getElementById("accounting-save").textContent = "Guardar registro";
+        updateAccountingUsdAmount();
+    }
+
+    function editAccountingRecord(recordId) {
+        const record = accountingRecords.find(function (item) {
+            return String(item.id) === recordId;
+        });
+        if (!record) {
+            showNotice("No se encontró el registro seleccionado. Actualiza la información.", true);
+            return;
+        }
+        editingAccountingId = String(record.id);
+        document.getElementById("accounting-date").value = accountingDate(record);
+        document.getElementById("accounting-description").value = record.descripcion || "";
+        document.getElementById("accounting-amount").value = record.monto;
+        document.getElementById("accounting-currency").value = record.moneda;
+        document.getElementById("accounting-rate").value = record.tasa_bcv || 0;
+        document.getElementById("accounting-payment-type").value = record.tipo_pago;
+        document.getElementById("accounting-method").value = record.metodo_pago;
+        document.getElementById("accounting-service").value = record.tipo_servicio;
+        document.getElementById("accounting-observations").value = record.observaciones || "";
+        document.getElementById("accounting-save").textContent = "Actualizar registro";
+        updateAccountingUsdAmount();
+        document.getElementById("accounting-form").scrollIntoView({ behavior: "smooth", block: "start" });
+        showNotice("Editando el registro " + recordId + ". Guarda los cambios o limpia el formulario para cancelar.", false);
+    }
+
+    async function deleteAccountingRecord(recordId) {
+        const record = accountingRecords.find(function (item) {
+            return String(item.id) === recordId;
+        });
+        if (!record) {
+            showNotice("No se encontró el registro seleccionado. Actualiza la información.", true);
+            return;
+        }
+        if (!window.confirm(
+            "¿Eliminar el registro " + recordId + "?\n"
+            + record.fecha + " — " + record.descripcion + "\n\nEsta acción no se puede deshacer."
+        )) {
+            return;
+        }
+        const result = await client.rpc("eliminar_registro_contable", {
+            p_identificacion: recordId
+        });
+        if (result.error) {
+            throw result.error;
+        }
+        await loadTable("contabilidad");
+        showNotice("Registro " + recordId + " eliminado.", false);
+    }
+
+    function exportAccountingCsv() {
+        const records = getFilteredAccountingRecords();
+        const columns = [
+            ["identificacion", "ID"], ["fecha", "Fecha"], ["descripcion", "Descripción"],
+            ["monto", "Monto"], ["moneda", "Moneda"], ["tasa_bcv", "Tasa BCV"],
+            ["metodo_pago", "Método"], ["tipo_pago", "Tipo Pago"], ["tipo_servicio", "Servicio"],
+            ["monto_usd", "Monto USD"], ["observaciones", "Observaciones"]
+        ];
+        const lines = [
+            "sep=;\r\n" + columns.map(function (column) { return csvField(column[1]); }).join(";")
+        ];
+        records.forEach(function (record) {
+            lines.push(columns.map(function (column) {
+                return csvField(column[0] === "fecha" ? accountingDate(record) : record[column[0]]);
+            }).join(";"));
+        });
+        const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "contabilidad-" + localDateISO() + ".csv";
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showNotice("Reporte contable exportado: " + records.length + " registros.", false);
+    }
+
     async function submitAccounting(event) {
         event.preventDefault();
         const form = event.currentTarget;
@@ -389,7 +777,8 @@
             if (!description) {
                 throw new Error("Escribe una descripción.");
             }
-            const result = await client.rpc("registrar_contabilidad", {
+            const result = await client.rpc("guardar_registro_contable", {
+                p_identificacion: editingAccountingId,
                 p_fecha: document.getElementById("accounting-date").value,
                 p_descripcion: description,
                 p_monto: selectedNumber("accounting-amount"),
@@ -397,17 +786,28 @@
                 p_tasa_bcv: selectedNumber("accounting-rate"),
                 p_tipo_pago: document.getElementById("accounting-payment-type").value,
                 p_metodo_pago: document.getElementById("accounting-method").value,
-                p_tipo_servicio: document.getElementById("accounting-service").value
+                p_tipo_servicio: document.getElementById("accounting-service").value,
+                p_observaciones: document.getElementById("accounting-observations").value.trim()
             });
             if (result.error) {
                 throw result.error;
             }
 
-            form.reset();
-            document.getElementById("accounting-date").value = localDateISO();
-            document.getElementById("accounting-rate").value = "0";
-            await loadTable("contabilidad");
-            showNotice("Registro contable guardado.", false);
+            const wasEditing = editingAccountingId !== null;
+            resetAccountingForm();
+            try {
+                await loadAllTables();
+            } catch (error) {
+                showNotice(
+                    "El registro se guardó, pero no se pudo actualizar la pantalla. "
+                        + "Pulsa Actualizar para volver a cargarlo: " + error.message,
+                    true
+                );
+                return;
+            }
+            showNotice(wasEditing
+                ? "Registro " + result.data + " actualizado correctamente."
+                : "Registro " + result.data + " guardado correctamente.", false);
         } catch (error) {
             showNotice("No se pudo guardar el registro contable: " + error.message, true);
         } finally {
@@ -809,6 +1209,85 @@
         document.getElementById("purchase-form").addEventListener("submit", submitPurchase);
         document.getElementById("sale-form").addEventListener("submit", submitSale);
         document.getElementById("accounting-form").addEventListener("submit", submitAccounting);
+        document.getElementById("accounting-reset").addEventListener("click", function () {
+            resetAccountingForm();
+            clearNotice();
+        });
+        document.getElementById("accounting-amount").addEventListener("input", updateAccountingUsdAmount);
+        document.getElementById("accounting-currency").addEventListener("change", updateAccountingUsdAmount);
+        document.getElementById("accounting-rate").addEventListener("input", updateAccountingUsdAmount);
+        function renderAccountingIfValid() {
+            const from = document.getElementById("accounting-filter-from").value;
+            const to = document.getElementById("accounting-filter-to").value;
+            if (from && to && from > to) {
+                showNotice("La fecha inicial no puede ser posterior a la fecha final.", true);
+                return false;
+            }
+            renderAccountingView();
+            clearNotice();
+            return true;
+        }
+        document.getElementById("accounting-apply-filter").addEventListener("click", function () {
+            renderAccountingIfValid();
+        });
+        document.getElementById("accounting-show-all").addEventListener("click", function () {
+            document.getElementById("accounting-filter-from").value = "";
+            document.getElementById("accounting-filter-to").value = "";
+            document.getElementById("accounting-search").value = "";
+            accountingReportName = "control";
+            renderAccountingView();
+            clearNotice();
+        });
+        document.getElementById("accounting-search-button").addEventListener("click", function () {
+            renderAccountingIfValid();
+        });
+        document.getElementById("accounting-search").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                renderAccountingIfValid();
+            }
+        });
+        document.getElementById("accounting-clear-search").addEventListener("click", function () {
+            document.getElementById("accounting-search").value = "";
+            renderAccountingIfValid();
+        });
+        document.getElementById("accounting-export").addEventListener("click", function () {
+            if (!renderAccountingIfValid()) {
+                return;
+            }
+            try {
+                exportAccountingCsv();
+            } catch (error) {
+                showNotice("No se pudo exportar el reporte contable: " + error.message, true);
+            }
+        });
+        document.querySelectorAll(".accounting-report").forEach(function (button) {
+            button.addEventListener("click", function () {
+                accountingReportName = button.dataset.report;
+                if (!renderAccountingIfValid()) {
+                    return;
+                }
+            });
+        });
+        document.getElementById("table-contabilidad").addEventListener("click", async function (event) {
+            const button = event.target.closest("button[data-action]");
+            if (!button) {
+                return;
+            }
+            const recordId = button.dataset.recordId;
+            if (button.dataset.action === "edit") {
+                editAccountingRecord(recordId);
+            } else if (button.dataset.action === "delete") {
+                button.disabled = true;
+                try {
+                    await deleteAccountingRecord(recordId);
+                } catch (error) {
+                    showNotice("No se pudo eliminar el registro contable: " + error.message, true);
+                } finally {
+                    button.disabled = false;
+                }
+            }
+        });
         document.getElementById("sale-product").addEventListener("change", updateSalePrice);
         document.getElementById("sale-price").addEventListener("input", updateSaleTotal);
         document.getElementById("sale-quantity").addEventListener("input", updateSaleTotal);
@@ -829,6 +1308,8 @@
             requireConfig();
             bindEvents();
             document.getElementById("accounting-date").value = localDateISO();
+            updateAccountingUsdAmount();
+            renderAccountingView();
             const sessionResult = await client.auth.getSession();
             if (sessionResult.error) {
                 throw sessionResult.error;

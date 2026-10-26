@@ -114,7 +114,8 @@ h3 {
 }
 
 input,
-select {
+select,
+textarea {
     width: 100%;
     min-height: 44px;
     padding: 9px 11px;
@@ -126,9 +127,15 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
     outline: 3px solid rgb(36 130 190 / 25%);
     outline-offset: 2px;
+}
+
+textarea {
+    resize: vertical;
+    font: inherit;
 }
 
 .button,
@@ -229,6 +236,60 @@ button:focus-visible {
     margin: 24px 0 10px;
 }
 
+.accounting-block {
+    margin-top: 18px;
+}
+
+.accounting-block h3 {
+    margin-bottom: 10px;
+}
+
+.accounting-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 10px;
+}
+
+.accounting-card {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 9px;
+    background: #eaf3f9;
+}
+
+.accounting-card h4 {
+    margin: 0 0 6px;
+    color: #45657d;
+    font-size: 0.82rem;
+}
+
+.accounting-card p {
+    margin: 0;
+    color: #123b63;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.accounting-report-actions {
+    margin-bottom: 8px;
+}
+
+.button-danger {
+    background: #a3352b;
+    color: #fff;
+}
+
+.button-danger:hover {
+    background: #812820;
+}
+
+.table-action {
+    min-height: 34px;
+    margin: 2px;
+    padding: 7px 9px;
+    font-size: 0.8rem;
+}
+
 .table-wrap {
     width: 100%;
     overflow: auto;
@@ -315,6 +376,10 @@ tbody tr:last-child td {
 
     .form-grid {
         gap: 12px;
+    }
+
+    .accounting-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .section-heading {
