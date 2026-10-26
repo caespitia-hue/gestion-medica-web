@@ -59,6 +59,14 @@
         return String(value);
     }
 
+    function formatPrice(value) {
+        const price = Number(value);
+        if (value === null || value === undefined || value === "" || !Number.isFinite(price) || price < 0) {
+            return "sin precio";
+        }
+        return "US$ " + price.toFixed(2);
+    }
+
     function localDateISO() {
         const now = new Date();
         const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -150,7 +158,8 @@
                 const saleOption = document.createElement("option");
                 saleOption.value = product.codigo;
                 saleOption.textContent = product.codigo + " - " + product.descripcion
-                    + " (disp.: " + product.cantidad + ")";
+                    + " (disp.: " + product.cantidad
+                    + ", precio actual: " + formatPrice(product.precio_venta) + ")";
                 saleSelect.append(saleOption);
             }
         });
@@ -159,6 +168,12 @@
             "hidden",
             document.getElementById("purchase-mode").value === "new"
         );
+        const isNewProduct = document.getElementById("purchase-mode").value === "new";
+        document.getElementById("purchase-code-field").classList.toggle("hidden", !isNewProduct);
+        document.getElementById("purchase-description-field").classList.toggle("hidden", !isNewProduct);
+        document.getElementById("purchase-product").required = !isNewProduct;
+        document.getElementById("purchase-code").required = isNewProduct;
+        document.getElementById("purchase-description").required = isNewProduct;
 
         if (!saleSelect.options.length) {
             const option = document.createElement("option");
@@ -281,7 +296,17 @@
     function updateSalePrice() {
         const code = document.getElementById("sale-product").value;
         const product = productsByCode.get(code);
-        document.getElementById("sale-price").value = product ? product.precio_venta : "";
+        const price = Number(product && product.precio_venta);
+        const hasPrice = product
+            && product.precio_venta !== null
+            && product.precio_venta !== undefined
+            && product.precio_venta !== ""
+            && Number.isFinite(price)
+            && price >= 0;
+        document.getElementById("sale-price").value = hasPrice ? product.precio_venta : "";
+        document.getElementById("sale-current-price").textContent = product
+            ? "Precio actual en inventario: " + formatPrice(product.precio_venta)
+            : "Precio actual en inventario: —";
         updateSaleTotal();
     }
 
