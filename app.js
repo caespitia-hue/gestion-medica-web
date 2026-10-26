@@ -204,11 +204,60 @@
                 throw new Error("Completa el código y la descripción del producto.");
             }
 
+            let salePrice = selectedNumber("purchase-price");
+            let priceNotice = "";
+            if (product) {
+                const currentPriceResult = await client
+                    .from("inventario")
+                    .select("precio_venta")
+                    .eq("codigo", code)
+                    .single();
+                if (currentPriceResult.error) {
+                    throw currentPriceResult.error;
+                }
+                if (!currentPriceResult.data) {
+                    throw new Error("No se encontró el producto en el inventario. Actualiza la información e intenta de nuevo.");
+                }
+
+                const currentPriceValue = currentPriceResult.data.precio_venta;
+                const currentPrice = Number(currentPriceValue);
+                if (
+                    currentPriceValue === null
+                    || currentPriceValue === undefined
+                    || currentPriceValue === ""
+                    || !Number.isFinite(currentPrice)
+                    || currentPrice < 0
+                ) {
+                    throw new Error("No se pudo verificar el precio de venta actual del producto.");
+                }
+
+                if (salePrice === currentPrice) {
+                    window.alert(
+                        "El precio de venta nuevo (US$ " + salePrice.toFixed(2)
+                        + ") es igual al actual. La compra continuará sin cambiar el precio."
+                    );
+                    priceNotice = " El precio de venta quedó sin cambios.";
+                } else if (salePrice < currentPrice) {
+                    const useNewPrice = window.confirm(
+                        "El precio de venta nuevo (US$ " + salePrice.toFixed(2)
+                        + ") es menor que el actual (US$ " + currentPrice.toFixed(2)
+                        + ").\n\nAceptar: usar el precio nuevo.\nCancelar: conservar el precio actual."
+                    );
+                    if (useNewPrice) {
+                        priceNotice = " Se aceptó el nuevo precio de venta.";
+                    } else {
+                        salePrice = currentPrice;
+                        document.getElementById("purchase-price").value = currentPrice.toFixed(2);
+                        priceNotice = " Se conservó el precio de venta actual.";
+                    }
+                }
+            }
+
             const result = await client.rpc("registrar_compra", {
                 p_codigo: code,
                 p_descripcion: description,
                 p_precio_compra: selectedNumber("purchase-cost"),
-                p_precio_venta: selectedNumber("purchase-price"),
+                p_precio_venta: salePrice,
                 p_fecha_vencimiento: document.getElementById("purchase-expiry").value || null,
                 p_cantidad: positiveInteger("purchase-quantity"),
                 p_producto_nuevo: mode === "new"
@@ -221,7 +270,7 @@
             document.getElementById("purchase-mode").value = "existing";
             refreshProductOptions();
             await loadAllTables();
-            showNotice("Compra registrada e inventario actualizado.", false);
+            showNotice("Compra registrada e inventario actualizado." + priceNotice, false);
         } catch (error) {
             showNotice("No se pudo guardar la compra: " + error.message, true);
         } finally {
