@@ -174,6 +174,11 @@
         document.getElementById("purchase-product").required = !isNewProduct;
         document.getElementById("purchase-code").required = isNewProduct;
         document.getElementById("purchase-description").required = isNewProduct;
+        if (isNewProduct) {
+            updateNewProductCode().catch(function (error) {
+                showNotice("No se pudo generar el código del producto: " + error.message, true);
+            });
+        }
 
         if (!saleSelect.options.length) {
             const option = document.createElement("option");
@@ -182,6 +187,19 @@
             saleSelect.append(option);
         }
         updateSalePrice();
+    }
+
+    async function updateNewProductCode() {
+        const codeInput = document.getElementById("purchase-code");
+        codeInput.value = "";
+        const result = await client.rpc("proximo_codigo_producto");
+        if (result.error) {
+            throw result.error;
+        }
+        if (typeof result.data !== "string" || !/^PULM-\d{4,}$/.test(result.data)) {
+            throw new Error("Supabase no devolvió un código de producto válido.");
+        }
+        codeInput.value = result.data;
     }
 
     function selectedNumber(id) {
@@ -216,7 +234,9 @@
                 ? document.getElementById("purchase-description").value.trim()
                 : product && product.descripcion;
             if (!code || !description) {
-                throw new Error("Completa el código y la descripción del producto.");
+                throw new Error(mode === "new"
+                    ? "Escribe la descripción y espera a que se asigne el código automáticamente."
+                    : "Selecciona un producto existente.");
             }
 
             let salePrice = selectedNumber("purchase-price");
@@ -285,7 +305,10 @@
             document.getElementById("purchase-mode").value = "existing";
             refreshProductOptions();
             await loadAllTables();
-            showNotice("Compra registrada e inventario actualizado." + priceNotice, false);
+            const successMessage = mode === "new"
+                ? "Producto " + code + " creado y compra registrada."
+                : "Compra registrada e inventario actualizado.";
+            showNotice(successMessage + priceNotice, false);
         } catch (error) {
             showNotice("No se pudo guardar la compra: " + error.message, true);
         } finally {
