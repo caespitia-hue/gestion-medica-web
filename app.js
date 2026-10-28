@@ -392,14 +392,42 @@
                 throw result.error;
             }
 
+            const saleAmount = selectedNumber("sale-price") * quantity;
+            prepareAccountingFromSale(product.descripcion, saleAmount);
             form.reset();
-            await loadAllTables();
-            showNotice("Venta registrada y existencias actualizadas.", false);
+            try {
+                await loadAllTables();
+            } catch (error) {
+                showNotice(
+                    "La venta fue registrada y el inventario descontado, pero no se pudieron actualizar "
+                        + "las tablas. El borrador contable quedó preparado; revisa Contabilidad y pulsa Actualizar. "
+                        + error.message,
+                    true
+                );
+                return;
+            }
+            showNotice(
+                "Venta registrada y existencias actualizadas. Se preparó el ingreso en Contabilidad; "
+                    + "completa los datos que faltan y pulsa Guardar registro.",
+                false
+            );
         } catch (error) {
             showNotice("No se pudo registrar la venta: " + error.message, true);
         } finally {
             setBusy(form, false);
         }
+    }
+
+    function prepareAccountingFromSale(description, amount) {
+        resetAccountingForm();
+        document.getElementById("accounting-description").value = description;
+        document.getElementById("accounting-amount").value = amount.toFixed(2);
+        document.getElementById("accounting-currency").value = "USD";
+        document.getElementById("accounting-payment-type").value = "Ingreso";
+        document.getElementById("accounting-service").value = "Venta";
+        updateAccountingUsdAmount();
+        document.querySelector('.tab[data-section="contabilidad"]').click();
+        document.getElementById("accounting-form").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function accountingDate(record) {
