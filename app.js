@@ -518,7 +518,7 @@
 
     function appendTable(container, headers, rows, actionRows, footerValues) {
         container.replaceChildren();
-        if (!rows.length) {
+        if (!rows.length && !footerValues) {
             const empty = document.createElement("p");
             empty.className = "empty";
             empty.textContent = "No hay registros para los filtros seleccionados.";
@@ -544,6 +544,15 @@
         head.append(headRow);
 
         const body = document.createElement("tbody");
+        if (!rows.length) {
+            const emptyRow = document.createElement("tr");
+            const emptyCell = document.createElement("td");
+            emptyCell.colSpan = headers.length + (actionRows ? 1 : 0);
+            emptyCell.className = "empty";
+            emptyCell.textContent = "No hay registros para los filtros seleccionados.";
+            emptyRow.append(emptyCell);
+            body.append(emptyRow);
+        }
         rows.forEach(function (row) {
             const rowElement = document.createElement("tr");
             row.values.forEach(function (value) {
@@ -570,18 +579,17 @@
             }
             body.append(rowElement);
         });
-        table.append(head, body);
         if (footerValues) {
-            const footer = document.createElement("tfoot");
-            const footerRow = document.createElement("tr");
+            const totalRow = document.createElement("tr");
+            totalRow.className = "accounting-total-row";
             footerValues.forEach(function (value) {
                 const cell = document.createElement("td");
                 cell.textContent = displayValue(value);
-                footerRow.append(cell);
+                totalRow.append(cell);
             });
-            footer.append(footerRow);
-            table.append(footer);
+            body.append(totalRow);
         }
+        table.append(head, body);
         container.append(table);
     }
 

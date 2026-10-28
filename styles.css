@@ -319,7 +319,7 @@ th {
     color: #234d6d;
 }
 
-tfoot td {
+.accounting-total-row td {
     border-top: 2px solid #9db7ca;
     background: #eaf3f9;
     color: #123b63;
