@@ -18,7 +18,7 @@
         inventario: ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
         compras: ["identificacion", "codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
         ventas: ["identificacion", "codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
-        contabilidad: ["id", "fecha", "descripcion", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
+        contabilidad: ["id", "fecha", "descripcion", "cantidad", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
 
     function showNotice(message, isError) {
@@ -393,7 +393,7 @@
             }
 
             const saleAmount = selectedNumber("sale-price") * quantity;
-            prepareAccountingFromSale(product.descripcion, saleAmount);
+            prepareAccountingFromSale(product.descripcion, quantity, saleAmount);
             form.reset();
             try {
                 await loadAllTables();
@@ -418,9 +418,10 @@
         }
     }
 
-    function prepareAccountingFromSale(description, amount) {
+    function prepareAccountingFromSale(description, quantity, amount) {
         resetAccountingForm();
         document.getElementById("accounting-description").value = description;
+        document.getElementById("accounting-quantity").value = String(quantity);
         document.getElementById("accounting-amount").value = amount.toFixed(2);
         document.getElementById("accounting-currency").value = "USD";
         document.getElementById("accounting-payment-type").value = "Ingreso";
@@ -515,7 +516,7 @@
         document.getElementById("accounting-record-count").textContent = String(records.length);
     }
 
-    function appendTable(container, headers, rows, actionRows) {
+    function appendTable(container, headers, rows, actionRows, footerValues) {
         container.replaceChildren();
         if (!rows.length) {
             const empty = document.createElement("p");
@@ -570,6 +571,17 @@
             body.append(rowElement);
         });
         table.append(head, body);
+        if (footerValues) {
+            const footer = document.createElement("tfoot");
+            const footerRow = document.createElement("tr");
+            footerValues.forEach(function (value) {
+                const cell = document.createElement("td");
+                cell.textContent = displayValue(value);
+                footerRow.append(cell);
+            });
+            footer.append(footerRow);
+            table.append(footer);
+        }
         container.append(table);
     }
 
@@ -593,10 +605,11 @@
         let headers;
         let rows;
         let editable = false;
+        let footerValues;
 
         if (reportName === "control") {
             reportTitle.textContent = "Control de registro";
-            headers = ["ID", "Fecha", "Descripción", "Monto", "Moneda", "Tasa BCV", "Método", "Tipo de pago", "Servicio", "Monto USD", "Observaciones"];
+            headers = ["ID", "Fecha", "Descripción", "Cantidad", "Monto", "Moneda", "Tasa BCV", "Método", "Tipo de pago", "Servicio", "Monto USD", "Observaciones"];
             rows = records.map(function (record) {
                 return {
                     record: record,
@@ -604,6 +617,7 @@
                         record.id,
                         accountingDate(record),
                         record.descripcion,
+                        record.cantidad,
                         accountingReportValue(record, amountInRecordCurrency(record)),
                         record.moneda,
                         record.tasa_bcv,
@@ -619,11 +633,12 @@
         } else if (reportName === "daily") {
             reportTitle.textContent = "Detalle diario de caja";
             headers = [
-                "Fecha", "Descripción", "Ing. Bs (efectivo)", "Ing. Bs (transfer./Zelle)",
-                "Ing. USD (efectivo)", "Ing. USD (transfer./Zelle)", "Egr. Bs (efectivo)",
-                "Egr. Bs (transfer./Zelle)", "Egr. USD (efectivo)", "Egr. USD (transfer./Zelle)",
+                "Fecha", "Descripción", "Cantidad", "Ing. Bs. (Efectivo)", "Ing. Bs. (Transf.)",
+                "Ing. USD (Efectivo)", "Ing. USD (Transf.)", "Egr. Bs. (Efectivo)",
+                "Egr. Bs. (Transf.)", "Egr. USD (Efectivo)", "Egr. USD (Transf.)",
                 "Observaciones"
             ];
+            const dailyTotals = Array(8).fill(0);
             rows = records.map(function (record) {
                 const isBs = record.moneda === "Bs.";
                 const isIncome = record.tipo_pago === "Ingreso";
@@ -636,14 +651,19 @@
                 } else {
                     index = isBs ? (isCash ? 4 : 5) : (isCash ? 6 : 7);
                 }
+                dailyTotals[index] += amount;
                 values[index] = formatAccountingAmount(amount, isBs ? "Bs." : "USD");
                 return {
-                    values: [accountingDate(record), record.descripcion].concat(values, [record.observaciones])
+                    values: [accountingDate(record), record.descripcion, record.cantidad]
+                        .concat(values, [record.observaciones])
                 };
             });
+            footerValues = ["TOTAL", "", ""].concat(dailyTotals.map(function (amount, index) {
+                return formatAccountingAmount(amount, index < 2 || (index >= 4 && index < 6) ? "Bs." : "USD");
+            }), [""]);
         } else if (reportName === "monthly") {
             reportTitle.textContent = "Detalle mensual de caja";
-            headers = ["Mes", "Descripción", "Moneda", "Ingresos", "Egresos", "Saldo", "Observaciones"];
+            headers = ["Mes", "Descripción", "Cantidad", "Moneda", "Ingresos", "Egresos", "Saldo", "Observaciones"];
             rows = records.map(function (record) {
                 const income = record.tipo_pago === "Ingreso";
                 const amount = amountInRecordCurrency(record);
@@ -651,6 +671,7 @@
                     values: [
                         accountingDate(record).slice(0, 7),
                         record.descripcion,
+                        record.cantidad,
                         record.moneda,
                         formatAccountingAmount(income ? amount : 0, record.moneda),
                         formatAccountingAmount(income ? 0 : amount, record.moneda),
@@ -661,7 +682,7 @@
             });
         } else {
             reportTitle.textContent = "Resumen mensual de caja";
-            headers = ["Mes", "Descripción", "Ingreso Bs.", "Egreso Bs.", "Ingreso USD", "Egreso USD", "Observaciones"];
+            headers = ["Mes", "Descripción", "Cantidad", "Ingreso Bs.", "Egreso Bs.", "Ingreso USD", "Egreso USD", "Observaciones"];
             rows = records.map(function (record) {
                 const isIncome = record.tipo_pago === "Ingreso";
                 const isBs = record.moneda === "Bs.";
@@ -670,6 +691,7 @@
                     values: [
                         accountingDate(record).slice(0, 7),
                         record.descripcion,
+                        record.cantidad,
                         formatAccountingAmount(isBs && isIncome ? amount : 0, "Bs."),
                         formatAccountingAmount(isBs && !isIncome ? amount : 0, "Bs."),
                         formatAccountingAmount(!isBs && isIncome ? amount : 0, "USD"),
@@ -686,7 +708,7 @@
                 : " (" + (reportFrom ? "desde " + reportFrom : "hasta " + reportTo) + ")";
             reportTitle.textContent += period;
         }
-        appendTable(container, headers, rows, editable);
+        appendTable(container, headers, rows, editable, footerValues);
     }
 
     function updateAccountingUsdAmount() {
@@ -729,6 +751,9 @@
         editingAccountingId = String(record.id);
         document.getElementById("accounting-date").value = accountingDate(record);
         document.getElementById("accounting-description").value = record.descripcion || "";
+        document.getElementById("accounting-quantity").value = record.cantidad === null || record.cantidad === undefined
+            ? ""
+            : record.cantidad;
         document.getElementById("accounting-amount").value = record.monto;
         document.getElementById("accounting-currency").value = record.moneda;
         document.getElementById("accounting-rate").value = record.tasa_bcv || 0;
@@ -769,7 +794,7 @@
     function exportAccountingCsv() {
         const records = getFilteredAccountingRecords();
         const columns = [
-            ["identificacion", "ID"], ["fecha", "Fecha"], ["descripcion", "Descripción"],
+            ["id", "ID"], ["fecha", "Fecha"], ["descripcion", "Descripción"], ["cantidad", "Cantidad"],
             ["monto", "Monto"], ["moneda", "Moneda"], ["tasa_bcv", "Tasa BCV"],
             ["metodo_pago", "Método"], ["tipo_pago", "Tipo Pago"], ["tipo_servicio", "Servicio"],
             ["monto_usd", "Monto USD"], ["observaciones", "Observaciones"]
@@ -809,6 +834,9 @@
                 p_identificacion: editingAccountingId,
                 p_fecha: document.getElementById("accounting-date").value,
                 p_descripcion: description,
+                p_cantidad: document.getElementById("accounting-quantity").value
+                    ? positiveInteger("accounting-quantity")
+                    : null,
                 p_monto: selectedNumber("accounting-amount"),
                 p_moneda: document.getElementById("accounting-currency").value,
                 p_tasa_bcv: selectedNumber("accounting-rate"),
