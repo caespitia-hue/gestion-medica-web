@@ -671,30 +671,80 @@
             }), [""]);
         } else if (reportName === "monthly") {
             reportTitle.textContent = "Detalle mensual de caja";
-            headers = ["Mes", "Descripción", "Cantidad", "Moneda", "Ingresos", "Egresos", "Saldo", "Observaciones"];
+            headers = [
+                "Mes", "Descripción", "Cantidad", "Ing. Bs.", "Egr. Bs.", "Saldo Bs.",
+                "Ing. USD", "Egr. USD", "Saldo USD", "Observaciones"
+            ];
+            const monthlyTotals = {
+                incomeBs: 0,
+                expenseBs: 0,
+                incomeUsd: 0,
+                expenseUsd: 0
+            };
             rows = records.map(function (record) {
                 const income = record.tipo_pago === "Ingreso";
-                const amount = amountInRecordCurrency(record);
+                const isBs = record.moneda === "Bs.";
+                const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                if (isBs) {
+                    if (income) {
+                        monthlyTotals.incomeBs += amount;
+                    } else {
+                        monthlyTotals.expenseBs += amount;
+                    }
+                } else if (income) {
+                    monthlyTotals.incomeUsd += amount;
+                } else {
+                    monthlyTotals.expenseUsd += amount;
+                }
                 return {
                     values: [
                         accountingDate(record).slice(0, 7),
                         record.descripcion,
                         record.cantidad,
-                        record.moneda,
-                        formatAccountingAmount(income ? amount : 0, record.moneda),
-                        formatAccountingAmount(income ? 0 : amount, record.moneda),
-                        formatAccountingAmount(income ? amount : -amount, record.moneda),
+                        formatAccountingAmount(isBs && income ? amount : 0, "Bs."),
+                        formatAccountingAmount(isBs && !income ? amount : 0, "Bs."),
+                        formatAccountingAmount(isBs ? (income ? amount : -amount) : 0, "Bs."),
+                        formatAccountingAmount(!isBs && income ? amount : 0, "USD"),
+                        formatAccountingAmount(!isBs && !income ? amount : 0, "USD"),
+                        formatAccountingAmount(!isBs ? (income ? amount : -amount) : 0, "USD"),
                         record.observaciones
                     ]
                 };
             });
+            footerValues = [
+                "TOTAL", "", "",
+                formatAccountingAmount(monthlyTotals.incomeBs, "Bs."),
+                formatAccountingAmount(monthlyTotals.expenseBs, "Bs."),
+                formatAccountingAmount(monthlyTotals.incomeBs - monthlyTotals.expenseBs, "Bs."),
+                formatAccountingAmount(monthlyTotals.incomeUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.expenseUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.incomeUsd - monthlyTotals.expenseUsd, "USD"),
+                ""
+            ];
         } else {
             reportTitle.textContent = "Resumen mensual de caja";
             headers = ["Mes", "Descripción", "Cantidad", "Ingreso Bs.", "Egreso Bs.", "Ingreso USD", "Egreso USD", "Observaciones"];
+            const monthlyTotals = {
+                incomeBs: 0,
+                expenseBs: 0,
+                incomeUsd: 0,
+                expenseUsd: 0
+            };
             rows = records.map(function (record) {
                 const isIncome = record.tipo_pago === "Ingreso";
                 const isBs = record.moneda === "Bs.";
                 const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                if (isBs) {
+                    if (isIncome) {
+                        monthlyTotals.incomeBs += amount;
+                    } else {
+                        monthlyTotals.expenseBs += amount;
+                    }
+                } else if (isIncome) {
+                    monthlyTotals.incomeUsd += amount;
+                } else {
+                    monthlyTotals.expenseUsd += amount;
+                }
                 return {
                     values: [
                         accountingDate(record).slice(0, 7),
@@ -708,6 +758,14 @@
                     ]
                 };
             });
+            footerValues = [
+                "TOTAL", "", "",
+                formatAccountingAmount(monthlyTotals.incomeBs, "Bs."),
+                formatAccountingAmount(monthlyTotals.expenseBs, "Bs."),
+                formatAccountingAmount(monthlyTotals.incomeUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.expenseUsd, "USD"),
+                ""
+            ];
         }
 
         if (reportFrom || reportTo) {
@@ -825,6 +883,52 @@
         link.remove();
         URL.revokeObjectURL(url);
         showNotice("Reporte contable exportado: " + records.length + " registros.", false);
+    }
+
+    function exportCurrentAccountingReport() {
+        const container = document.getElementById("table-contabilidad");
+        const table = container.querySelector("table");
+        if (!table) {
+            throw new Error("No hay un reporte en pantalla para exportar.");
+        }
+
+        const headers = Array.from(table.querySelectorAll("thead th"))
+            .filter(function (header) { return header.textContent.trim() !== "Acciones"; })
+            .map(function (header) { return header.textContent.trim(); });
+        const rows = Array.from(table.querySelectorAll("tbody tr")).map(function (row) {
+            return Array.from(row.cells)
+                .slice(0, headers.length)
+                .map(function (cell) { return cell.textContent.trim(); });
+        });
+        const lines = [
+            "sep=;\r\n" + headers.map(excelCsvField).join(";")
+        ];
+        rows.forEach(function (row) {
+            lines.push(row.map(excelCsvField).join(";"));
+        });
+
+        const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "reporte-" + accountingReportName + "-" + localDateISO() + ".csv";
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showNotice(
+            "Reporte " + document.getElementById("accounting-report-title").textContent
+                + " exportado para Excel con " + rows.length + " filas.",
+            false
+        );
+    }
+
+    function excelCsvField(value) {
+        let text = value === null || value === undefined ? "" : String(value);
+        if (/^[\s]*[=+\-@]/.test(text)) {
+            text = "'" + text;
+        }
+        return csvField(text);
     }
 
     async function submitAccounting(event) {
@@ -1323,6 +1427,13 @@
                 exportAccountingCsv();
             } catch (error) {
                 showNotice("No se pudo exportar el reporte contable: " + error.message, true);
+            }
+        });
+        document.getElementById("accounting-export-report").addEventListener("click", function () {
+            try {
+                exportCurrentAccountingReport();
+            } catch (error) {
+                showNotice("No se pudo exportar el reporte para Excel: " + error.message, true);
             }
         });
         document.querySelectorAll(".accounting-report").forEach(function (button) {
