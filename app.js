@@ -617,7 +617,7 @@
 
         if (reportName === "control") {
             reportTitle.textContent = "Control de registro";
-            headers = ["ID", "Fecha", "Descripción", "Cantidad", "Monto", "Moneda", "Tasa BCV", "Método", "Tipo de pago", "Servicio", "Monto USD", "Observaciones"];
+            headers = ["ID", "Fecha", "Descripción", "Cantidad", "Monto", "Moneda", "Tasa BCV", "Método", "Tipo de pago", "Servicio", "Monto Total USD", "Observaciones"];
             rows = records.map(function (record) {
                 return {
                     record: record,
@@ -672,19 +672,22 @@
         } else if (reportName === "monthly") {
             reportTitle.textContent = "Detalle mensual de caja";
             headers = [
-                "Mes", "Descripción", "Cantidad", "Ing. Bs.", "Egr. Bs.", "Saldo Bs.",
-                "Ing. USD", "Egr. USD", "Saldo USD", "Observaciones"
+                "Mes", "Descripción", "Cantidad", "Ing. Bs.", "Ing. USD", "Egr. Bs.",
+                "Egr. USD", "Monto total USD", "Observaciones"
             ];
             const monthlyTotals = {
                 incomeBs: 0,
                 expenseBs: 0,
                 incomeUsd: 0,
-                expenseUsd: 0
+                expenseUsd: 0,
+                totalUsd: 0
             };
             rows = records.map(function (record) {
                 const income = record.tipo_pago === "Ingreso";
                 const isBs = record.moneda === "Bs.";
                 const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                const amountUsd = amountInUSD(record);
+                monthlyTotals.totalUsd += amountUsd;
                 if (isBs) {
                     if (income) {
                         monthlyTotals.incomeBs += amount;
@@ -702,11 +705,10 @@
                         record.descripcion,
                         record.cantidad,
                         formatAccountingAmount(isBs && income ? amount : 0, "Bs."),
-                        formatAccountingAmount(isBs && !income ? amount : 0, "Bs."),
-                        formatAccountingAmount(isBs ? (income ? amount : -amount) : 0, "Bs."),
                         formatAccountingAmount(!isBs && income ? amount : 0, "USD"),
+                        formatAccountingAmount(isBs && !income ? amount : 0, "Bs."),
                         formatAccountingAmount(!isBs && !income ? amount : 0, "USD"),
-                        formatAccountingAmount(!isBs ? (income ? amount : -amount) : 0, "USD"),
+                        formatAccountingAmount(amountUsd, "USD"),
                         record.observaciones
                     ]
                 };
@@ -714,11 +716,10 @@
             footerValues = [
                 "TOTAL", "", "",
                 formatAccountingAmount(monthlyTotals.incomeBs, "Bs."),
-                formatAccountingAmount(monthlyTotals.expenseBs, "Bs."),
-                formatAccountingAmount(monthlyTotals.incomeBs - monthlyTotals.expenseBs, "Bs."),
                 formatAccountingAmount(monthlyTotals.incomeUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.expenseBs, "Bs."),
                 formatAccountingAmount(monthlyTotals.expenseUsd, "USD"),
-                formatAccountingAmount(monthlyTotals.incomeUsd - monthlyTotals.expenseUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.totalUsd, "USD"),
                 ""
             ];
         } else {
