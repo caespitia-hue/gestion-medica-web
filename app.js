@@ -555,6 +555,9 @@
         }
         rows.forEach(function (row) {
             const rowElement = document.createElement("tr");
+            if (row.className) {
+                rowElement.className = row.className;
+            }
             row.values.forEach(function (value) {
                 const cell = document.createElement("td");
                 cell.textContent = displayValue(value);
@@ -757,10 +760,11 @@
                     return;
                 }
                 rows.push({
+                    className: "accounting-total-row",
                     values: [
                         currentGroup.month,
                         "TOTAL",
-                        currentGroup.quantity,
+                        "",
                         formatAccountingAmount(currentGroup.incomeBs, "Bs."),
                         formatAccountingAmount(currentGroup.incomeUsd, "USD"),
                         formatAccountingAmount(currentGroup.totalUsd, "USD"),
@@ -782,7 +786,6 @@
                     currentGroup = {
                         month: month,
                         service: record.tipo_servicio,
-                        quantity: 0,
                         incomeBs: 0,
                         incomeUsd: 0,
                         totalUsd: 0
@@ -792,7 +795,6 @@
                 const isBs = record.moneda === "Bs.";
                 const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
                 const amountUsd = amountInUSD(record);
-                currentGroup.quantity += Number(record.cantidad) || 0;
                 if (isBs) {
                     currentGroup.incomeBs += amount;
                 } else {
