@@ -723,48 +723,67 @@
                 ""
             ];
         } else {
-            reportTitle.textContent = "Resumen mensual de caja";
-            headers = ["Mes", "Descripción", "Cantidad", "Ingreso Bs.", "Egreso Bs.", "Ingreso USD", "Egreso USD", "Observaciones"];
+            reportTitle.textContent = "Res. mensual ingresos";
+            headers = [
+                "Mes", "Descripción", "Cantidad", "Ing. Bs.", "Ing. USD",
+                "Monto total USD", "Observaciones", "Servicio"
+            ];
             const monthlyTotals = {
                 incomeBs: 0,
-                expenseBs: 0,
                 incomeUsd: 0,
-                expenseUsd: 0
+                totalUsd: 0
             };
-            rows = records.map(function (record) {
-                const isIncome = record.tipo_pago === "Ingreso";
-                const isBs = record.moneda === "Bs.";
-                const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
-                if (isBs) {
-                    if (isIncome) {
+            rows = records
+                .filter(function (record) {
+                    return record.tipo_pago === "Ingreso"
+                        && (record.tipo_servicio === "Venta" || record.tipo_servicio === "Alquiler");
+                })
+                .sort(function (left, right) {
+                    const monthOrder = accountingDate(right).slice(0, 7)
+                        .localeCompare(accountingDate(left).slice(0, 7));
+                    if (monthOrder !== 0) {
+                        return monthOrder;
+                    }
+                    const serviceOrder = (left.tipo_servicio === "Venta" ? 0 : 1)
+                        - (right.tipo_servicio === "Venta" ? 0 : 1);
+                    if (serviceOrder !== 0) {
+                        return serviceOrder;
+                    }
+                    const dateOrder = accountingDate(right).localeCompare(accountingDate(left));
+                    if (dateOrder !== 0) {
+                        return dateOrder;
+                    }
+                    return Number(right.id) - Number(left.id);
+                })
+                .map(function (record) {
+                    const isBs = record.moneda === "Bs.";
+                    const amount = isBs ? amountInRecordCurrency(record) : amountInUSD(record);
+                    const amountUsd = amountInUSD(record);
+                    if (isBs) {
                         monthlyTotals.incomeBs += amount;
                     } else {
-                        monthlyTotals.expenseBs += amount;
+                        monthlyTotals.incomeUsd += amount;
                     }
-                } else if (isIncome) {
-                    monthlyTotals.incomeUsd += amount;
-                } else {
-                    monthlyTotals.expenseUsd += amount;
-                }
-                return {
-                    values: [
-                        accountingDate(record).slice(0, 7),
-                        record.descripcion,
-                        record.cantidad,
-                        formatAccountingAmount(isBs && isIncome ? amount : 0, "Bs."),
-                        formatAccountingAmount(isBs && !isIncome ? amount : 0, "Bs."),
-                        formatAccountingAmount(!isBs && isIncome ? amount : 0, "USD"),
-                        formatAccountingAmount(!isBs && !isIncome ? amount : 0, "USD"),
-                        record.observaciones
-                    ]
-                };
-            });
+                    monthlyTotals.totalUsd += amountUsd;
+                    return {
+                        values: [
+                            accountingDate(record).slice(0, 7),
+                            record.descripcion,
+                            record.cantidad,
+                            formatAccountingAmount(isBs ? amount : 0, "Bs."),
+                            formatAccountingAmount(!isBs ? amount : 0, "USD"),
+                            formatAccountingAmount(amountUsd, "USD"),
+                            record.observaciones,
+                            record.tipo_servicio
+                        ]
+                    };
+                });
             footerValues = [
                 "TOTAL", "", "",
                 formatAccountingAmount(monthlyTotals.incomeBs, "Bs."),
-                formatAccountingAmount(monthlyTotals.expenseBs, "Bs."),
                 formatAccountingAmount(monthlyTotals.incomeUsd, "USD"),
-                formatAccountingAmount(monthlyTotals.expenseUsd, "USD"),
+                formatAccountingAmount(monthlyTotals.totalUsd, "USD"),
+                "",
                 ""
             ];
         }
