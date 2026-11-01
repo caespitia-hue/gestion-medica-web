@@ -2,8 +2,12 @@
     color-scheme: light;
     font-family: "Segoe UI", Arial, sans-serif;
     color: #172b3d;
-    background: #eef4f8;
+    background: #edf3f8;
     font-synthesis: none;
+    --blue-900: #123b63;
+    --blue-800: #174b78;
+    --line: #d7e2eb;
+    --muted: #607789;
 }
 
 * {
@@ -13,6 +17,9 @@
 body {
     margin: 0;
     min-width: 320px;
+    background:
+        radial-gradient(ellipse at top, rgb(220 234 245 / 62%), transparent 48rem),
+        #edf3f8;
 }
 
 button,
@@ -22,9 +29,9 @@ select {
 }
 
 .page {
-    width: min(100% - 24px, 960px);
+    width: min(100% - 32px, 1180px);
     margin: 0 auto;
-    padding: 24px 0 36px;
+    padding: 30px 0 42px;
 }
 
 .page-header,
@@ -36,12 +43,12 @@ select {
 }
 
 .page-header {
-    margin: 0 2px 20px;
+    margin: 0 2px 24px;
 }
 
 .eyebrow {
     margin: 0 0 4px;
-    color: #45718f;
+    color: #4a7392;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -56,14 +63,16 @@ p {
 
 h1 {
     margin-bottom: 0;
-    color: #123b63;
+    color: var(--blue-900);
     font-size: clamp(1.5rem, 5vw, 2rem);
+    letter-spacing: -0.025em;
 }
 
 h2 {
     margin-bottom: 4px;
-    color: #123b63;
+    color: var(--blue-900);
     font-size: 1.3rem;
+    letter-spacing: -0.015em;
 }
 
 h3 {
@@ -72,11 +81,11 @@ h3 {
 }
 
 .panel {
-    padding: 22px;
-    border: 1px solid #dce7ef;
-    border-radius: 14px;
+    padding: 26px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
     background: #fff;
-    box-shadow: 0 4px 16px rgb(18 59 99 / 6%);
+    box-shadow: 0 12px 32px rgb(18 59 99 / 7%);
 }
 
 .login-panel {
@@ -86,7 +95,7 @@ h3 {
 
 .muted,
 .footer-note {
-    color: #607789;
+    color: var(--muted);
     line-height: 1.5;
 }
 
@@ -119,10 +128,11 @@ textarea {
     width: 100%;
     min-height: 44px;
     padding: 9px 11px;
-    border: 1px solid #c9d7e2;
-    border-radius: 8px;
+    border: 1px solid #c7d5e0;
+    border-radius: 9px;
     background: #fff;
     color: #172b3d;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 input:focus,
@@ -138,21 +148,38 @@ textarea {
     font: inherit;
 }
 
+input:hover,
+select:hover,
+textarea:hover {
+    border-color: #9fb6c9;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: #4b89b8;
+    box-shadow: 0 0 0 3px rgb(36 130 190 / 10%);
+}
+
 .button,
 .tab {
-    min-height: 42px;
-    padding: 10px 14px;
+    min-height: 40px;
+    padding: 9px 15px;
     border: 0;
-    border-radius: 8px;
-    background: #123b63;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #1d5b8d, #123b63);
     color: #fff;
     cursor: pointer;
     font-weight: 700;
+    box-shadow: 0 2px 5px rgb(18 59 99 / 12%);
+    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
 .button:hover,
 .tab:hover {
-    background: #1b5786;
+    background: linear-gradient(180deg, #276b9f, #174b78);
+    box-shadow: 0 4px 10px rgb(18 59 99 / 17%);
+    transform: translateY(-1px);
 }
 
 .button:disabled {
@@ -162,30 +189,41 @@ textarea {
 
 .button-secondary,
 .button-light {
-    background: #dcecf7;
-    color: #123b63;
+    border: 1px solid #cbdce9;
+    background: #f2f7fb;
+    color: var(--blue-900);
+    box-shadow: none;
 }
 
 .button-secondary:hover,
 .button-light:hover {
-    background: #c8e0f1;
+    border-color: #a9c5d9;
+    background: #e5f0f7;
+    color: var(--blue-900);
 }
 
 .tabs {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgb(18 59 99 / 5%);
 }
 
 .tab {
-    background: #dcecf7;
-    color: #123b63;
+    background: transparent;
+    color: #42627b;
+    box-shadow: none;
 }
 
 .tab.active {
-    background: #123b63;
+    background: var(--blue-900);
     color: #fff;
+    box-shadow: 0 3px 8px rgb(18 59 99 / 19%);
 }
 
 .module h2 {
@@ -193,7 +231,9 @@ textarea {
 }
 
 .section-heading {
-    margin-bottom: 18px;
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e8eef3;
 }
 
 .inventory-actions {
@@ -201,6 +241,10 @@ textarea {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+}
+
+.inventory-actions .button {
+    flex-shrink: 0;
 }
 
 .import-button {
@@ -234,6 +278,8 @@ textarea {
 
 .list-heading {
     margin: 24px 0 10px;
+    color: #284f6d;
+    font-weight: 700;
 }
 
 .accounting-block {
@@ -253,8 +299,9 @@ textarea {
 .accounting-card {
     min-width: 0;
     padding: 12px;
-    border-radius: 9px;
-    background: #eaf3f9;
+    border: 1px solid #e3edf4;
+    border-radius: 11px;
+    background: linear-gradient(145deg, #f3f8fc, #eaf3f9);
 }
 
 .accounting-card h4 {
@@ -272,10 +319,14 @@ textarea {
 
 .accounting-report-actions {
     margin-bottom: 8px;
+    padding: 12px;
+    border: 1px solid #e3ebf2;
+    border-radius: 11px;
+    background: #f8fafc;
 }
 
 .button-danger {
-    background: #a3352b;
+    background: linear-gradient(180deg, #b44439, #96352c);
     color: #fff;
 }
 
@@ -293,20 +344,22 @@ textarea {
 .table-wrap {
     width: 100%;
     overflow: auto;
-    border: 1px solid #dce7ef;
-    border-radius: 8px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #fff;
+    box-shadow: 0 3px 10px rgb(18 59 99 / 4%);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
     background: #fff;
-    font-size: 0.85rem;
+    font-size: 0.86rem;
 }
 
 th,
 td {
-    padding: 9px 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid #e2ebf1;
     text-align: left;
     white-space: nowrap;
@@ -315,14 +368,26 @@ td {
 th {
     position: sticky;
     top: 0;
-    background: #eaf3f9;
+    z-index: 1;
+    background: #e8f1f8;
     color: #234d6d;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+tbody tr:nth-child(even):not(.accounting-total-row) {
+    background: #fbfdfe;
+}
+
+tbody tr:hover:not(.accounting-total-row) {
+    background: #f1f7fb;
 }
 
 .accounting-total-row td {
-    border-top: 2px solid #9db7ca;
-    background: #eaf3f9;
-    color: #123b63;
+    border-top: 2px solid #9bb6ca;
+    background: #e8f1f8;
+    color: var(--blue-900);
     font-weight: 700;
 }
 
@@ -339,13 +404,15 @@ tbody tr:last-child td {
 .notice {
     margin: 0 0 14px;
     padding: 12px 14px;
-    border-radius: 8px;
+    border: 1px solid #cfe7d6;
+    border-radius: 10px;
     background: #e6f4ea;
     color: #205b35;
     line-height: 1.45;
 }
 
 .notice.error {
+    border-color: #f1d0cc;
     background: #fff0ef;
     color: #8c2d25;
 }
@@ -353,6 +420,7 @@ tbody tr:last-child td {
 .empty {
     padding: 16px;
     color: #607789;
+    line-height: 1.5;
     text-align: center;
 }
 
@@ -369,11 +437,11 @@ tbody tr:last-child td {
 @media (max-width: 600px) {
     .page {
         width: min(100% - 16px, 520px);
-        padding-top: 14px;
+        padding-top: 16px;
     }
 
     .panel {
-        padding: 16px;
+        padding: 18px;
         border-radius: 11px;
     }
 
@@ -391,6 +459,12 @@ tbody tr:last-child td {
 
     .section-heading {
         align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .section-heading > .inventory-actions,
+    .section-heading > .button {
+        width: 100%;
     }
 
     .inventory-actions {

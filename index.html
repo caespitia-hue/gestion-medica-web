@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#123b63">
     <title>Gestión Médica</title>
-    <link rel="stylesheet" href="styles.css?v=20261031-3">
+    <link rel="stylesheet" href="styles.css?v=20261101-3">
 </head>
 <body>
     <main class="page">
@@ -53,7 +53,7 @@
                         <button id="export-inventory" class="button button-secondary" type="button">Exportar CSV para Excel</button>
                         <label class="button button-secondary import-button" for="import-inventory">Importar CSV</label>
                         <input id="import-inventory" class="hidden" type="file" accept=".csv,text/csv">
-                        <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar</button>
+                        <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar lista</button>
                     </div>
                 </div>
                 <p class="muted import-help">La importación reemplaza los datos y las existencias de los códigos existentes. Las filas nuevas sin código reciben uno automáticamente. No crea registros de compras ni contabilidad.</p>
@@ -75,7 +75,7 @@
                         <h2>Compras</h2>
                         <p class="muted">Registra productos nuevos o repón existencias.</p>
                     </div>
-                    <button class="button button-secondary refresh" type="button" data-table="compras">Actualizar</button>
+                    <button class="button button-secondary refresh" type="button" data-table="compras">Actualizar lista</button>
                 </div>
                 <form id="purchase-form" class="form-grid">
                     <label class="field">
@@ -123,9 +123,9 @@
                 <div class="section-heading">
                     <div>
                         <h2>Ventas</h2>
-                        <p class="muted">La venta descuenta existencias y se guarda en un solo proceso.</p>
+                        <p class="muted">Registra la venta, descuenta existencias y prepara el ingreso contable.</p>
                     </div>
-                    <button class="button button-secondary refresh" type="button" data-table="ventas">Actualizar</button>
+                    <button class="button button-secondary refresh" type="button" data-table="ventas">Actualizar lista</button>
                 </div>
                 <form id="sale-form" class="form-grid">
                     <label class="field field-wide">
@@ -156,7 +156,7 @@
                         <h2>Contabilidad</h2>
                         <p class="muted">Registra ingresos y egresos.</p>
                     </div>
-                    <button class="button button-secondary refresh" type="button" data-table="contabilidad">Actualizar</button>
+                    <button class="button button-secondary refresh" type="button" data-table="contabilidad">Actualizar registros</button>
                 </div>
                 <section class="accounting-block" aria-labelledby="accounting-filters-title">
                     <h3 id="accounting-filters-title">Filtros y búsqueda</h3>
@@ -299,6 +299,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261101-1"></script>
+    <script src="app.js?v=20261101-3"></script>
 </body>
 </html>

@@ -21,6 +21,47 @@
         contabilidad: ["id", "fecha", "descripcion", "cantidad", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
 
+    const tableColumnLabels = {
+        inventario: {
+            codigo: "Código",
+            descripcion: "Descripción",
+            precio_compra: "Precio de compra (US$)",
+            precio_venta: "Precio de venta (US$)",
+            cantidad: "Existencias",
+            fecha_vencimiento: "Vencimiento"
+        },
+        compras: {
+            codigo: "Código",
+            descripcion: "Descripción",
+            precio_compra: "Precio de compra (US$)",
+            precio_venta: "Precio de venta (US$)",
+            fecha_vencimiento: "Vencimiento",
+            cantidad: "Cantidad comprada"
+        },
+        ventas: {
+            codigo: "Código",
+            descripcion: "Descripción",
+            cantidad: "Cantidad vendida",
+            precio_venta: "Precio de venta (US$)",
+            total: "Total (US$)",
+            fecha: "Fecha"
+        },
+        contabilidad: {
+            id: "N.º registro",
+            fecha: "Fecha",
+            descripcion: "Descripción",
+            cantidad: "Cantidad",
+            monto: "Monto",
+            moneda: "Moneda",
+            tasa_bcv: "Tasa BCV",
+            tipo_pago: "Tipo de pago",
+            metodo_pago: "Método de pago",
+            tipo_servicio: "Servicio",
+            monto_usd: "Monto total (USD)",
+            observaciones: "Observaciones"
+        }
+    };
+
     function showNotice(message, isError) {
         notice.textContent = message;
         notice.classList.toggle("error", Boolean(isError));
@@ -98,7 +139,7 @@
         columns.forEach(function (column) {
             const cell = document.createElement("th");
             cell.scope = "col";
-            cell.textContent = column.replace(/_/g, " ");
+            cell.textContent = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
             headRow.append(cell);
         });
         head.append(headRow);
