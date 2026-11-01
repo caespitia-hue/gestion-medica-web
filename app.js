@@ -16,8 +16,8 @@
 
     const tableColumns = {
         inventario: ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
-        compras: ["identificacion", "codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
-        ventas: ["identificacion", "codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
+        compras: ["codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
+        ventas: ["codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
         contabilidad: ["id", "fecha", "descripcion", "cantidad", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
 
