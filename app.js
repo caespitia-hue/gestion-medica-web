@@ -135,6 +135,7 @@
         const head = document.createElement("thead");
         const headRow = document.createElement("tr");
         const columns = tableColumns[tableName];
+        const supportsDeletion = tableName === "compras" || tableName === "ventas";
 
         columns.forEach(function (column) {
             const cell = document.createElement("th");
@@ -142,6 +143,12 @@
             cell.textContent = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
             headRow.append(cell);
         });
+        if (supportsDeletion) {
+            const actionsHeader = document.createElement("th");
+            actionsHeader.scope = "col";
+            actionsHeader.textContent = "Acciones";
+            headRow.append(actionsHeader);
+        }
         head.append(headRow);
 
         const body = document.createElement("tbody");
@@ -152,6 +159,25 @@
                 cell.textContent = displayValue(row[column]);
                 rowElement.append(cell);
             });
+            if (supportsDeletion) {
+                const actionCell = document.createElement("td");
+                const deleteButton = document.createElement("button");
+                const actionName = tableName === "compras" ? "delete-purchase" : "delete-sale";
+                deleteButton.className = "button button-danger table-action";
+                deleteButton.type = "button";
+                deleteButton.dataset.action = actionName;
+                deleteButton.dataset.recordId = String(row.id || "");
+                deleteButton.dataset.code = String(row.codigo || "");
+                deleteButton.dataset.quantity = String(row.cantidad || "");
+                deleteButton.textContent = "Eliminar";
+                deleteButton.setAttribute(
+                    "aria-label",
+                    "Eliminar " + (tableName === "compras" ? "compra " : "venta ")
+                        + (row.codigo || "")
+                );
+                actionCell.append(deleteButton);
+                rowElement.append(actionCell);
+            }
             body.append(rowElement);
         });
 
@@ -947,6 +973,57 @@
         showNotice("Registro " + recordId + " eliminado.", false);
     }
 
+    async function deleteStockMovement(tableName, button) {
+        const recordId = button.dataset.recordId;
+        const quantity = Number(button.dataset.quantity);
+        const code = button.dataset.code;
+        if (!/^[1-9]\d*$/.test(recordId) || !Number.isSafeInteger(quantity) || quantity <= 0 || !code) {
+            throw new Error("No se pudo identificar el movimiento. Actualiza la lista e intenta de nuevo.");
+        }
+
+        const isPurchase = tableName === "compras";
+        const movementName = isPurchase ? "compra" : "venta";
+        const question = isPurchase
+            ? "¿Eliminar esta compra de " + quantity + " unidad(es) del producto " + code
+                + "?\n\nSe descontarán esas unidades del inventario. Si no hay suficientes existencias, "
+                + "el sistema impedirá el borrado."
+            : "¿Eliminar esta venta de " + quantity + " unidad(es) del producto " + code
+                + "?\n\nLas unidades se devolverán al inventario.";
+        if (!window.confirm(question + "\n\nEsta acción no se puede deshacer.")) {
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            const result = await client.rpc(
+                isPurchase ? "eliminar_compra" : "eliminar_venta",
+                { p_id: Number(recordId) }
+            );
+            if (result.error) {
+                throw result.error;
+            }
+        } finally {
+            button.disabled = false;
+        }
+
+        try {
+            await loadAllTables();
+        } catch (error) {
+            showNotice(
+                "La " + movementName + " se eliminó, pero no se pudieron actualizar las tablas. "
+                    + "Pulsa Actualizar lista e inténtalo de nuevo. " + error.message,
+                true
+            );
+            return;
+        }
+        showNotice(
+            isPurchase
+                ? "Compra eliminada e inventario actualizado."
+                : "Venta eliminada y unidades devueltas al inventario.",
+            false
+        );
+    }
+
     function exportAccountingCsv() {
         const records = getFilteredAccountingRecords();
         const columns = [
@@ -1552,6 +1629,20 @@
                     button.disabled = false;
                 }
             }
+        });
+        ["compras", "ventas"].forEach(function (tableName) {
+            document.getElementById("table-" + tableName).addEventListener("click", async function (event) {
+                const button = event.target.closest('button[data-action^="delete-"]');
+                if (!button) {
+                    return;
+                }
+                try {
+                    await deleteStockMovement(tableName, button);
+                } catch (error) {
+                    showNotice("No se pudo eliminar la " + (tableName === "compras" ? "compra" : "venta")
+                        + ": " + error.message, true);
+                }
+            });
         });
         document.getElementById("sale-product").addEventListener("change", updateSalePrice);
         document.getElementById("sale-price").addEventListener("input", updateSaleTotal);
