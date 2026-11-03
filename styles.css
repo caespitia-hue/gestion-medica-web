@@ -46,6 +46,22 @@ select {
     margin: 0 2px 24px;
 }
 
+.page-header-actions {
+    display: grid;
+    justify-items: end;
+    gap: 10px;
+}
+
+.page-logo {
+    display: block;
+    width: 112px;
+    height: 72px;
+    object-fit: contain;
+    border: 1px solid #e3ebf2;
+    border-radius: 10px;
+    background: #fff;
+}
+
 .eyebrow {
     margin: 0 0 4px;
     color: #4a7392;
@@ -438,6 +454,11 @@ tbody tr:last-child td {
     .page {
         width: min(100% - 16px, 520px);
         padding-top: 16px;
+    }
+
+    .page-logo {
+        width: 82px;
+        height: 58px;
     }
 
     .panel {
