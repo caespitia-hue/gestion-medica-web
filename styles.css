@@ -220,7 +220,7 @@ textarea:focus {
 
 .tabs {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
     margin-bottom: 16px;
     padding: 6px;
@@ -240,6 +240,25 @@ textarea:focus {
     background: var(--blue-900);
     color: #fff;
     box-shadow: 0 3px 8px rgb(18 59 99 / 19%);
+}
+
+.tab.tab-alert:not(.active) {
+    background: #fff0ef;
+    color: #8c2d25;
+}
+
+.tab-badge {
+    display: inline-flex;
+    min-width: 20px;
+    min-height: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #b44439;
+    color: #fff;
+    font-size: 0.75rem;
 }
 
 .module h2 {
@@ -431,6 +450,23 @@ tbody tr:last-child td {
     border-color: #f1d0cc;
     background: #fff0ef;
     color: #8c2d25;
+}
+
+.receivables-alert {
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    border: 1px solid #f1c5c0;
+    border-radius: 10px;
+    background: #fff0ef;
+    color: #8c2d25;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.receivables-alert.clear {
+    border-color: #cfe7d6;
+    background: #e6f4ea;
+    color: #205b35;
 }
 
 .empty {

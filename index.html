@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#123b63">
     <title>Gestión Médica</title>
-    <link rel="stylesheet" href="styles.css?v=20261104-1">
+    <link rel="stylesheet" href="styles.css?v=20261109-1">
 </head>
 <body>
     <main class="page">
@@ -41,6 +41,9 @@
                 <button class="tab active" type="button" data-section="inventario">Inventario</button>
                 <button class="tab" type="button" data-section="compras">Compras</button>
                 <button class="tab" type="button" data-section="ventas">Ventas</button>
+                <button id="receivables-tab" class="tab" type="button" data-section="cuentas-por-cobrar">
+                    Cuentas por cobrar <span id="receivables-tab-badge" class="tab-badge hidden"></span>
+                </button>
                 <button class="tab" type="button" data-section="contabilidad">Contabilidad</button>
             </nav>
 
@@ -126,7 +129,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>Ventas</h2>
-                        <p class="muted">Registra la venta, descuenta existencias y prepara el ingreso contable. Puedes eliminar una venta desde la lista para devolver las unidades al inventario.</p>
+                        <p class="muted">Registra la venta y descuenta existencias. Elige si el cobro es inmediato o queda pendiente; puedes eliminar una venta desde la lista para devolver las unidades al inventario.</p>
                     </div>
                     <button class="button button-secondary refresh" type="button" data-table="ventas">Actualizar lista</button>
                 </div>
@@ -146,11 +149,36 @@
                         Cantidad
                         <input id="sale-quantity" type="number" min="1" step="1" required>
                     </label>
+                    <label class="field">
+                        Estado del pago
+                        <select id="sale-payment-status">
+                            <option value="inmediato">Cobro inmediato</option>
+                            <option value="pendiente">Pendiente por cobrar</option>
+                        </select>
+                    </label>
+                    <label class="field field-wide">
+                        Observaciones
+                        <textarea id="sale-observations" maxlength="1000" rows="2"></textarea>
+                    </label>
                     <p id="sale-total" class="total field-wide">Total: US$ 0.00</p>
                     <button class="button field-wide" type="submit">Registrar venta</button>
                 </form>
                 <h3 class="list-heading">Ventas registradas</h3>
                 <div id="table-ventas" class="table-wrap"></div>
+            </section>
+
+            <section id="section-cuentas-por-cobrar" class="panel module hidden">
+                <div class="section-heading">
+                    <div>
+                        <h2>Cuentas por cobrar</h2>
+                        <p class="muted">Ventas pendientes de pago. La venta descuenta el inventario; el ingreso se registra solo al recibir el pago completo.</p>
+                    </div>
+                    <button class="button button-secondary refresh" type="button" data-table="cuentas_por_cobrar">Actualizar cuentas</button>
+                </div>
+                <div id="receivables-alert" class="receivables-alert" role="status" aria-live="polite">
+                    No hay cuentas pendientes por cobrar.
+                </div>
+                <div id="table-cuentas_por_cobrar" class="table-wrap"></div>
             </section>
 
             <section id="section-contabilidad" class="panel module hidden">
@@ -219,6 +247,7 @@
                     </div>
                 </section>
                 <form id="accounting-form" class="form-grid">
+                    <p id="accounting-collection-help" class="notice field-wide hidden"></p>
                     <label class="field">
                         Fecha
                         <input id="accounting-date" type="date" required>
@@ -302,6 +331,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261102-1"></script>
+    <script src="app.js?v=20261109-1"></script>
 </body>
 </html>

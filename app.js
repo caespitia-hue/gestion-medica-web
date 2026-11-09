@@ -9,15 +9,18 @@
     const signOutButton = document.getElementById("sign-out");
     const productsByCode = new Map();
     const accountingRecords = [];
+    const receivablesById = new Map();
     let client;
     let pendingInventoryImport = null;
     let editingAccountingId = null;
+    let pendingReceivableId = null;
     let accountingReportName = "control";
 
     const tableColumns = {
         inventario: ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
         compras: ["codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
         ventas: ["codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
+        cuentas_por_cobrar: ["fecha", "descripcion", "cantidad", "monto_usd", "observaciones"],
         contabilidad: ["id", "fecha", "descripcion", "cantidad", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
 
@@ -45,6 +48,13 @@
             precio_venta: "Precio de venta (US$)",
             total: "Total (US$)",
             fecha: "Fecha"
+        },
+        cuentas_por_cobrar: {
+            fecha: "Fecha",
+            descripcion: "Descripción",
+            cantidad: "Cantidad",
+            monto_usd: "Monto en USD",
+            observaciones: "Observaciones"
         },
         contabilidad: {
             id: "N.º registro",
@@ -136,6 +146,7 @@
         const headRow = document.createElement("tr");
         const columns = tableColumns[tableName];
         const supportsDeletion = tableName === "compras" || tableName === "ventas";
+        const supportsCollection = tableName === "cuentas_por_cobrar";
 
         columns.forEach(function (column) {
             const cell = document.createElement("th");
@@ -143,7 +154,7 @@
             cell.textContent = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
             headRow.append(cell);
         });
-        if (supportsDeletion) {
+        if (supportsDeletion || supportsCollection) {
             const actionsHeader = document.createElement("th");
             actionsHeader.scope = "col";
             actionsHeader.textContent = "Acciones";
@@ -156,25 +167,35 @@
             const rowElement = document.createElement("tr");
             columns.forEach(function (column) {
                 const cell = document.createElement("td");
-                cell.textContent = displayValue(row[column]);
+                cell.textContent = tableName === "cuentas_por_cobrar" && column === "monto_usd"
+                    ? formatAccountingAmount(row[column], "USD")
+                    : displayValue(row[column]);
                 rowElement.append(cell);
             });
-            if (supportsDeletion) {
+            if (supportsDeletion || supportsCollection) {
                 const actionCell = document.createElement("td");
                 const deleteButton = document.createElement("button");
-                const actionName = tableName === "compras" ? "delete-purchase" : "delete-sale";
-                deleteButton.className = "button button-danger table-action";
+                const actionName = supportsCollection
+                    ? "collect-receivable"
+                    : tableName === "compras" ? "delete-purchase" : "delete-sale";
+                deleteButton.className = "button " + (supportsCollection ? "" : "button-danger ")
+                    + "table-action";
                 deleteButton.type = "button";
                 deleteButton.dataset.action = actionName;
                 deleteButton.dataset.recordId = String(row.id || "");
                 deleteButton.dataset.code = String(row.codigo || "");
                 deleteButton.dataset.quantity = String(row.cantidad || "");
-                deleteButton.textContent = "Eliminar";
+                deleteButton.textContent = supportsCollection ? "Registrar cobro" : "Eliminar";
                 deleteButton.setAttribute(
                     "aria-label",
-                    "Eliminar " + (tableName === "compras" ? "compra " : "venta ")
-                        + (row.codigo || "")
+                    supportsCollection
+                        ? "Registrar cobro completo de " + (row.descripcion || "")
+                        : "Eliminar " + (tableName === "compras" ? "compra " : "venta ")
+                            + (row.codigo || "")
                 );
+                if (supportsCollection) {
+                    deleteButton.dataset.recordId = String(row.id);
+                }
                 actionCell.append(deleteButton);
                 rowElement.append(actionCell);
             }
@@ -205,6 +226,46 @@
                 }
             }
             renderAccountingView();
+            return;
+        }
+
+        if (tableName === "cuentas_por_cobrar") {
+            const records = [];
+            const pageSize = 1000;
+            for (let offset = 0; ; offset += pageSize) {
+                const result = await client.from(tableName)
+                    .select("*")
+                    .eq("estado", "pendiente")
+                    .order("fecha", { ascending: true })
+                    .order("id", { ascending: true })
+                    .range(offset, offset + pageSize - 1);
+                if (result.error) {
+                    throw result.error;
+                }
+                records.push.apply(records, result.data || []);
+                if (!result.data || result.data.length < pageSize) {
+                    break;
+                }
+            }
+            receivablesById.clear();
+            records.forEach(function (record) {
+                receivablesById.set(String(record.id), record);
+            });
+            const total = records.reduce(function (sum, record) {
+                return sum + (Number(record.monto_usd) || 0);
+            }, 0);
+            const alert = document.getElementById("receivables-alert");
+            const tab = document.getElementById("receivables-tab");
+            const badge = document.getElementById("receivables-tab-badge");
+            tab.classList.toggle("tab-alert", records.length > 0);
+            badge.classList.toggle("hidden", records.length === 0);
+            badge.textContent = records.length ? String(records.length) : "";
+            alert.classList.toggle("clear", records.length === 0);
+            alert.textContent = records.length
+                ? records.length + (records.length === 1 ? " factura pendiente por cobrar: " : " facturas pendientes por cobrar: ")
+                    + formatAccountingAmount(total, "USD")
+                : "No hay cuentas pendientes por cobrar.";
+            renderTable(tableName, records);
             return;
         }
 
@@ -449,35 +510,56 @@
                 throw new Error("Existencias insuficientes. Disponibles: " + product.cantidad + ".");
             }
 
+            const paymentStatus = document.getElementById("sale-payment-status").value;
+            const observations = document.getElementById("sale-observations").value.trim();
+            const salePrice = selectedNumber("sale-price");
+            if (paymentStatus === "pendiente" && salePrice <= 0) {
+                throw new Error("El monto de una venta pendiente debe ser mayor que cero.");
+            }
             const result = await client.rpc("registrar_venta", {
                 p_codigo: code,
                 p_cantidad: quantity,
-                p_precio_venta: selectedNumber("sale-price"),
-                p_fecha: localDateISO()
+                p_precio_venta: salePrice,
+                p_fecha: localDateISO(),
+                p_pendiente_por_cobrar: paymentStatus === "pendiente",
+                p_observaciones: observations
             });
             if (result.error) {
                 throw result.error;
             }
 
-            const saleAmount = selectedNumber("sale-price") * quantity;
-            prepareAccountingFromSale(product.descripcion, quantity, saleAmount);
+            const saleAmount = salePrice * quantity;
+            if (paymentStatus !== "pendiente") {
+                prepareAccountingFromSale(product.descripcion, quantity, saleAmount, observations);
+            }
             form.reset();
             try {
                 await loadAllTables();
             } catch (error) {
                 showNotice(
                     "La venta fue registrada y el inventario descontado, pero no se pudieron actualizar "
-                        + "las tablas. El borrador contable quedó preparado; revisa Contabilidad y pulsa Actualizar. "
+                        + "las tablas. "
+                        + (paymentStatus === "pendiente"
+                            ? "Revisa Cuentas por cobrar y pulsa Actualizar. "
+                            : "El borrador contable quedó preparado; revisa Contabilidad y pulsa Actualizar. ")
                         + error.message,
                     true
                 );
                 return;
             }
-            showNotice(
-                "Venta registrada y existencias actualizadas. Se preparó el ingreso en Contabilidad; "
-                    + "completa los datos que faltan y pulsa Guardar registro.",
-                false
-            );
+            if (paymentStatus === "pendiente") {
+                document.querySelector('.tab[data-section="cuentas-por-cobrar"]').click();
+                showNotice(
+                    "Venta registrada y existencias actualizadas. El pago quedó pendiente; no se registró ningún ingreso.",
+                    false
+                );
+            } else {
+                showNotice(
+                    "Venta registrada y existencias actualizadas. Se preparó el ingreso en Contabilidad; "
+                        + "completa los datos que faltan y pulsa Guardar registro.",
+                    false
+                );
+            }
         } catch (error) {
             showNotice("No se pudo registrar la venta: " + error.message, true);
         } finally {
@@ -485,7 +567,7 @@
         }
     }
 
-    function prepareAccountingFromSale(description, quantity, amount) {
+    function prepareAccountingFromSale(description, quantity, amount, observations) {
         resetAccountingForm();
         document.getElementById("accounting-description").value = description;
         document.getElementById("accounting-quantity").value = String(quantity);
@@ -493,6 +575,7 @@
         document.getElementById("accounting-currency").value = "USD";
         document.getElementById("accounting-payment-type").value = "Ingreso";
         document.getElementById("accounting-service").value = "Venta";
+        document.getElementById("accounting-observations").value = observations || "";
         updateAccountingUsdAmount();
         document.querySelector('.tab[data-section="contabilidad"]').click();
         document.getElementById("accounting-form").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -908,8 +991,38 @@
         document.getElementById("accounting-usd-amount").value = usdAmount.toFixed(2);
     }
 
+    function prepareReceivableCollection(recordId) {
+        const record = receivablesById.get(String(recordId));
+        if (!record) {
+            showNotice("No se encontró la cuenta pendiente. Actualiza la lista e intenta de nuevo.", true);
+            return;
+        }
+
+        resetAccountingForm();
+        pendingReceivableId = String(record.id);
+        document.getElementById("accounting-date").value = localDateISO();
+        document.getElementById("accounting-description").value = "Cobro: " + record.descripcion;
+        document.getElementById("accounting-quantity").value = String(record.cantidad);
+        document.getElementById("accounting-amount").value = Number(record.monto_usd).toFixed(2);
+        document.getElementById("accounting-currency").value = "USD";
+        document.getElementById("accounting-payment-type").value = "Ingreso";
+        document.getElementById("accounting-service").value = "Venta";
+        document.getElementById("accounting-observations").value = record.observaciones || "";
+        document.getElementById("accounting-save").textContent = "Registrar cobro completo";
+        const help = document.getElementById("accounting-collection-help");
+        help.textContent = "Registra el pago completo de " + record.descripcion + " por "
+            + formatAccountingAmount(record.monto_usd, "USD")
+            + ". Si recibiste bolívares, cambia la moneda y coloca el monto recibido y la tasa BCV.";
+        help.classList.remove("hidden");
+        updateAccountingUsdAmount();
+        document.querySelector('.tab[data-section="contabilidad"]').click();
+        document.getElementById("accounting-form").scrollIntoView({ behavior: "smooth", block: "start" });
+        showNotice("Completa los datos del pago y pulsa Registrar cobro completo.", false);
+    }
+
     function resetAccountingForm() {
         editingAccountingId = null;
+        pendingReceivableId = null;
         const form = document.getElementById("accounting-form");
         form.reset();
         document.getElementById("accounting-date").value = localDateISO();
@@ -919,6 +1032,7 @@
         document.getElementById("accounting-service").value = "Venta";
         document.getElementById("accounting-rate").value = "0";
         document.getElementById("accounting-save").textContent = "Guardar registro";
+        document.getElementById("accounting-collection-help").classList.add("hidden");
         updateAccountingUsdAmount();
     }
 
@@ -928,6 +1042,14 @@
         });
         if (!record) {
             showNotice("No se encontró el registro seleccionado. Actualiza la información.", true);
+            return;
+        }
+        if (record.cuenta_por_cobrar_id) {
+            showNotice(
+                "Este ingreso corresponde al cobro de una factura. Para corregirlo, elimina el registro; "
+                    + "la cuenta volverá a quedar pendiente por cobrar.",
+                true
+            );
             return;
         }
         editingAccountingId = String(record.id);
@@ -1109,21 +1231,45 @@
             if (!description) {
                 throw new Error("Escribe una descripción.");
             }
-            const result = await client.rpc("guardar_registro_contable", {
-                p_identificacion: editingAccountingId,
-                p_fecha: document.getElementById("accounting-date").value,
-                p_descripcion: description,
-                p_cantidad: document.getElementById("accounting-quantity").value
-                    ? positiveInteger("accounting-quantity")
-                    : null,
-                p_monto: selectedNumber("accounting-amount"),
-                p_moneda: document.getElementById("accounting-currency").value,
-                p_tasa_bcv: selectedNumber("accounting-rate"),
-                p_tipo_pago: document.getElementById("accounting-payment-type").value,
-                p_metodo_pago: document.getElementById("accounting-method").value,
-                p_tipo_servicio: document.getElementById("accounting-service").value,
-                p_observaciones: document.getElementById("accounting-observations").value.trim()
-            });
+            let result;
+            const wasCollection = pendingReceivableId !== null;
+            if (wasCollection) {
+                const receivable = receivablesById.get(pendingReceivableId);
+                if (!receivable) {
+                    throw new Error("La cuenta pendiente ya no está disponible. Actualiza Cuentas por cobrar.");
+                }
+                const expectedAmount = Number(receivable.monto_usd).toFixed(2);
+                if (document.getElementById("accounting-usd-amount").value !== expectedAmount) {
+                    throw new Error(
+                        "El pago debe cubrir el monto completo pendiente de US$ " + expectedAmount + "."
+                    );
+                }
+                result = await client.rpc("registrar_cobro_cuenta", {
+                    p_id: Number(pendingReceivableId),
+                    p_fecha: document.getElementById("accounting-date").value,
+                    p_monto: selectedNumber("accounting-amount"),
+                    p_moneda: document.getElementById("accounting-currency").value,
+                    p_tasa_bcv: selectedNumber("accounting-rate"),
+                    p_metodo_pago: document.getElementById("accounting-method").value,
+                    p_observaciones: document.getElementById("accounting-observations").value.trim()
+                });
+            } else {
+                result = await client.rpc("guardar_registro_contable", {
+                    p_identificacion: editingAccountingId,
+                    p_fecha: document.getElementById("accounting-date").value,
+                    p_descripcion: description,
+                    p_cantidad: document.getElementById("accounting-quantity").value
+                        ? positiveInteger("accounting-quantity")
+                        : null,
+                    p_monto: selectedNumber("accounting-amount"),
+                    p_moneda: document.getElementById("accounting-currency").value,
+                    p_tasa_bcv: selectedNumber("accounting-rate"),
+                    p_tipo_pago: document.getElementById("accounting-payment-type").value,
+                    p_metodo_pago: document.getElementById("accounting-method").value,
+                    p_tipo_servicio: document.getElementById("accounting-service").value,
+                    p_observaciones: document.getElementById("accounting-observations").value.trim()
+                });
+            }
             if (result.error) {
                 throw result.error;
             }
@@ -1140,9 +1286,11 @@
                 );
                 return;
             }
-            showNotice(wasEditing
-                ? "Registro " + result.data + " actualizado correctamente."
-                : "Registro " + result.data + " guardado correctamente.", false);
+            showNotice(wasCollection
+                ? "Cobro registrado en Contabilidad y cuenta marcada como pagada."
+                : wasEditing
+                    ? "Registro " + result.data + " actualizado correctamente."
+                    : "Registro " + result.data + " guardado correctamente.", false);
         } catch (error) {
             showNotice("No se pudo guardar el registro contable: " + error.message, true);
         } finally {
@@ -1628,6 +1776,12 @@
                 } finally {
                     button.disabled = false;
                 }
+            }
+        });
+        document.getElementById("table-cuentas_por_cobrar").addEventListener("click", function (event) {
+            const button = event.target.closest('button[data-action="collect-receivable"]');
+            if (button) {
+                prepareReceivableCollection(button.dataset.recordId);
             }
         });
         ["compras", "ventas"].forEach(function (tableName) {
