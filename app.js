@@ -371,6 +371,14 @@
             saleSelect.append(option);
         }
         updateSalePrice();
+        updatePurchaseProductDescription();
+    }
+
+    function updatePurchaseProductDescription() {
+        const product = productsByCode.get(document.getElementById("purchase-product").value);
+        document.getElementById("purchase-product-description").textContent = product
+            ? product.descripcion
+            : "";
     }
 
     async function updateNewProductCode() {
@@ -503,6 +511,9 @@
     function updateSalePrice() {
         const code = document.getElementById("sale-product").value;
         const product = productsByCode.get(code);
+        document.getElementById("sale-product-description").textContent = product
+            ? product.descripcion
+            : "";
         const price = Number(product && product.precio_venta);
         const hasPrice = product
             && product.precio_venta !== null
@@ -1875,6 +1886,10 @@
             });
         });
         document.getElementById("sale-product").addEventListener("change", updateSalePrice);
+        document.getElementById("purchase-product").addEventListener(
+            "change",
+            updatePurchaseProductDescription
+        );
         document.getElementById("sale-price").addEventListener("input", updateSaleTotal);
         document.getElementById("sale-quantity").addEventListener("input", updateSaleTotal);
         document.getElementById("export-inventory").addEventListener("click", async function () {

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#123b63">
     <title>Gestión Médica</title>
-    <link rel="stylesheet" href="styles.css?v=20261111-6">
+    <link rel="stylesheet" href="styles.css?v=20261111-7">
 </head>
 <body>
     <main class="page">
@@ -91,9 +91,10 @@
                             <option value="new">Producto nuevo</option>
                         </select>
                     </label>
-                    <label id="purchase-product-field" class="field">
+                    <label id="purchase-product-field" class="field field-wide">
                         Producto
                         <select id="purchase-product" required></select>
+                        <span id="purchase-product-description" class="product-description-preview" aria-live="polite"></span>
                     </label>
                     <label id="purchase-code-field" class="field hidden">
                         Código asignado automáticamente
@@ -137,6 +138,7 @@
                     <label class="field field-wide">
                         Producto disponible
                         <select id="sale-product" required></select>
+                        <span id="sale-product-description" class="product-description-preview" aria-live="polite"></span>
                     </label>
                     <label class="field">
                         Precio de venta (US$)
@@ -331,6 +333,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261111-4"></script>
+    <script src="app.js?v=20261111-5"></script>
 </body>
 </html>
