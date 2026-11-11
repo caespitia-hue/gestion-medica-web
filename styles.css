@@ -630,13 +630,13 @@ tbody tr:last-child td {
     }
 
     .accounting-report-table td.description-cell {
-        width: 180px;
-        max-width: 180px;
+        width: 220px;
+        max-width: 220px;
     }
 
     .accounting-report-table .description-text {
-        width: 150px;
-        max-width: 150px;
+        width: 190px;
+        max-width: 190px;
     }
 
     th,
