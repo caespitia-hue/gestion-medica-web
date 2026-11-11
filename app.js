@@ -151,7 +151,22 @@
         columns.forEach(function (column) {
             const cell = document.createElement("th");
             cell.scope = "col";
-            cell.textContent = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
+            const label = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
+            if (column === "precio_compra" || column === "precio_venta") {
+                cell.classList.add("price-header");
+                const labelParts = label.match(/^(Precio de (?:compra|venta)) \((.+)\)$/);
+                if (labelParts) {
+                    cell.append(
+                        document.createTextNode(labelParts[1]),
+                        document.createElement("br"),
+                        document.createTextNode("(" + labelParts[2] + ")")
+                    );
+                } else {
+                    cell.textContent = label;
+                }
+            } else {
+                cell.textContent = label;
+            }
             headRow.append(cell);
         });
         if (supportsDeletion || supportsCollection) {
@@ -169,8 +184,14 @@
                 const cell = document.createElement("td");
                 if (column === "descripcion") {
                     cell.classList.add("description-cell");
-                }
-                if (column === "fecha_vencimiento") {
+                    const description = document.createElement("span");
+                    description.className = "description-text";
+                    description.textContent = displayValue(row[column]);
+                    cell.append(description);
+                } else if (column === "precio_compra" || column === "precio_venta") {
+                    cell.classList.add("price-cell");
+                    cell.textContent = displayValue(row[column]);
+                } else if (column === "fecha_vencimiento") {
                     cell.textContent = formatExpiryDate(row[column]);
                 } else if (tableName === "cuentas_por_cobrar" && column === "monto_usd") {
                     cell.textContent = formatAccountingAmount(row[column], "USD");
