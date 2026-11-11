@@ -1401,11 +1401,31 @@
 
     function normalizeImportedDate(value, lineNumber) {
         const date = value.trim();
-        if (!date) {
+        if (!date || date.toLocaleUpperCase() === "NA") {
             return null;
         }
-        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            return date;
+        const isoDate = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoDate) {
+            const year = Number(isoDate[1]);
+            const month = Number(isoDate[2]);
+            const day = Number(isoDate[3]);
+            const parsed = new Date(Date.UTC(year, month - 1, day));
+            if (
+                parsed.getUTCFullYear() === year
+                && parsed.getUTCMonth() === month - 1
+                && parsed.getUTCDate() === day
+            ) {
+                return date;
+            }
+        }
+
+        const monthYear = date.match(/^(\d{1,2})\/(\d{4})$/);
+        if (monthYear) {
+            const month = Number(monthYear[1]);
+            const year = Number(monthYear[2]);
+            if (month >= 1 && month <= 12) {
+                return year + "-" + String(month).padStart(2, "0") + "-01";
+            }
         }
 
         const localized = date.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
@@ -1423,7 +1443,7 @@
                     + "-" + String(day).padStart(2, "0");
             }
         }
-        throw new Error("La fecha de vencimiento debe estar en formato AAAA-MM-DD o DD/MM/AAAA (fila " + lineNumber + ").");
+        throw new Error("La fecha de vencimiento debe ser NA, MM/AAAA, AAAA-MM-DD o DD/MM/AAAA (fila " + lineNumber + ").");
     }
 
     function parseInventoryCsv(text) {

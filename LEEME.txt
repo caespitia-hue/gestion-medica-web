@@ -1,0 +1,162 @@
+GESTIÓN MÉDICA WEB — ARCHIVOS PARA PUBLICAR GRATIS
+
+Esta carpeta contiene una versión web para consultar inventario y registrar
+compras, ventas y contabilidad desde un teléfono o una computadora.
+El sitio puede alojarse sin costo en GitHub Pages y usa Supabase para los datos.
+No depende de que esta computadora quede encendida.
+
+IMPORTANTE
+
+- No publiques la base local GestionMedica.db ni la carpeta backups.
+- En supabase-config.js pega únicamente la clave publicable (anon/publishable)
+  de Supabase. Nunca uses una clave service_role o secret.
+- La clave publicable se puede ver en una web; la protección real depende de
+  las políticas RLS y de desactivar el registro libre de cuentas.
+- No cargues información real hasta completar todos los pasos de seguridad
+  y probar compras y ventas con productos de prueba.
+
+Si ya ejecutaste una versión anterior de este archivo, vuelve a ejecutar el
+archivo completo después de actualizarlo. Esto actualiza las funciones de
+Supabase, incluidas las que asignan automáticamente códigos de producto y
+permiten mantener los registros contables, eliminar compras/ventas y controlar
+facturas pendientes por cobrar desde la web. El SQL agrega la tabla de cuentas
+por cobrar y no convierte las ventas anteriores en deudas pendientes.
+
+PASO 1 — CONFIGURAR SUPABASE
+
+1. Abre el proyecto Supabase y confirma que las tablas se llaman:
+   inventario, compras, ventas y contabilidad.
+2. Confirma que sus columnas usan los nombres indicados en
+   supabase-setup.sql. El archivo no registra fecha ni observaciones en compras,
+   porque esas columnas no existen en tu tabla.
+3. En Authentication > Settings, desactiva el registro público de usuarios.
+   Solo debe poder entrar el usuario que tú autorices.
+4. En Authentication > Users, agrega tu propio usuario con correo y contraseña.
+5. Revisa que la tabla contabilidad tenga las columnas id, fecha, descripcion,
+   monto, moneda, tasa_bcv, tipo_pago, metodo_pago y tipo_servicio. La columna
+   id debe generarse automáticamente (por ejemplo, con una secuencia nextval).
+   Si no sabes cómo revisar esto, detente y pide ayuda antes de ejecutar el SQL.
+6. Abre SQL Editor > New query, copia el contenido de supabase-setup.sql,
+   revísalo y ejecútalo. El SQL agrega monto_usd y observaciones sin borrar los
+   registros existentes. Si Supabase muestra un error, detente y pide ayuda;
+   no abras las tablas para todos como solución.
+7. En Project Settings > API (o API Keys), copia la URL del proyecto y la clave
+   publicable/anon. Nunca copies la clave service_role/secret.
+8. Abre supabase-config.js y pega esos dos valores en url y anonKey.
+
+PASO 2 — PUBLICAR EN GITHUB PAGES
+
+1. Crea un repositorio nuevo en GitHub. Para una cuenta gratuita, déjalo como
+   público; solo sube los archivos de esta carpeta, nunca toda la carpeta del
+   programa.
+2. Sube index.html, styles.css, app.js y supabase-config.js a la raíz del
+   repositorio. No hace falta subir supabase-setup.sql después de ejecutarlo.
+3. En el repositorio, abre Settings > Pages.
+4. En Build and deployment, selecciona Deploy from a branch, la rama main y
+   la carpeta /(root); guarda.
+5. GitHub mostrará la dirección del sitio cuando termine la publicación.
+6. En Supabase > Authentication > URL Configuration, configura esa dirección
+   como Site URL y agrégala también a Redirect URLs.
+
+PASO 3 — PROBAR
+
+1. Abre el enlace de GitHub Pages en el teléfono.
+2. Inicia sesión con el usuario creado en Supabase.
+3. Confirma que puedes consultar el inventario.
+4. Prueba una compra y una venta con un producto temporal y revisa que cambien
+   las existencias correctamente. Al elegir un producto nuevo, confirma que
+   Supabase asigne el siguiente código PULM automáticamente y que solo tengas
+   que escribir la descripción. Al reponer un producto, comprueba también que
+   un precio de venta igual se informe y que, si el nuevo precio es menor,
+   puedas elegir entre conservar el actual o usar el nuevo. Luego elimina los
+   datos de prueba. En ventas, el selector muestra las existencias y el precio
+   actual del inventario como referencia.
+5. Prueba un registro contable y confirma que aparezca en la tabla.
+
+COMPRAS Y VENTAS: ELIMINAR
+
+- En las tablas de Compras y Ventas, el botón "Eliminar" pide confirmación.
+- Eliminar una venta devuelve sus unidades al inventario y borra ese movimiento.
+- Eliminar una compra descuenta del inventario las unidades de esa compra.
+  Si ya no quedan unidades suficientes, la operación se bloquea para evitar
+  existencias negativas. Si el producto fue creado por esa única compra, queda
+  con cero existencias y sin otros movimientos, también se elimina del inventario.
+- El borrado es definitivo. Solo corrige las existencias; no revierte cambios
+  anteriores en precios ni elimina registros contables guardados por separado.
+
+CUENTAS POR COBRAR
+
+- Antes de usar esta función en la web publicada, ejecuta el archivo completo
+  supabase-setup.sql en Supabase. Si ya ejecutaste una versión anterior, vuelve
+  a ejecutar el archivo actualizado; luego publica los archivos index.html,
+  styles.css y app.js. No reemplaces supabase-config.js.
+- Al registrar una venta, elige "Cobro inmediato" o "Pendiente por cobrar".
+  En ambos casos las existencias se descuentan al guardar la venta.
+- Las ventas pendientes aparecen en Cuentas por cobrar con fecha, descripción,
+  cantidad, monto en USD y observaciones. El aviso muestra el número de
+  facturas y el monto total pendiente.
+- El cobro se registra completo desde "Registrar cobro". Puedes indicar si
+  recibiste USD o bolívares, la tasa BCV y el método de pago. Solo entonces se
+  crea el ingreso en Contabilidad y la cuenta deja de estar pendiente.
+- Las cuentas pendientes aceptan pago completo, no abonos parciales. Los datos
+  de cliente, factura u otros detalles pueden escribirse en Observaciones.
+- Las ventas históricas anteriores a instalar esta función no se añaden
+  automáticamente a Cuentas por cobrar.
+- Si eliminas el registro contable de un cobro, su cuenta vuelve a quedar
+  pendiente. Una venta ya cobrada no se puede eliminar hasta borrar primero
+  su ingreso asociado en Contabilidad.
+
+INVENTARIO: EXPORTAR E IMPORTAR
+
+- En Inventario, usa "Exportar CSV para Excel" para descargar todos los
+  productos. Puedes abrir el archivo CSV en Excel y editarlo.
+- Para importar, guarda la hoja desde Excel como CSV delimitado por punto y
+  coma y usa "Importar CSV". Conserva los encabezados exportados.
+- Los códigos existentes actualizan los datos y reemplazan la cantidad actual.
+  Si el código está vacío, Supabase asigna uno nuevo automáticamente.
+- La importación solo modifica inventario; no agrega registros de compras ni
+  movimientos contables. Se muestra una confirmación antes de guardar.
+- Cada archivo admite hasta 500 productos. El vencimiento acepta NA (o campo
+  vacío) si no aplica, MM/AAAA, AAAA-MM-DD o DD/MM/AAAA.
+- No importes un archivo XLSX directamente: primero guárdalo como CSV desde
+  Excel.
+
+CONTABILIDAD
+
+- El formulario permite registrar y editar fecha, descripción, cantidad,
+  monto, moneda, tasa BCV, tipo de pago, método, servicio y observaciones. La
+  cantidad es opcional, excepto que se incluye automáticamente en ventas. El
+  equivalente USD se calcula automáticamente.
+- Los filtros por fecha y búsqueda actualizan el resumen y los reportes.
+  "Ver todos" quita todos los filtros; "Limpiar búsqueda" solo limpia el texto.
+- Los reportes disponibles son Control de registro, Detalle diario de caja,
+  Detalle mensual de caja y Res. mensual ingresos. El control permite editar
+  o eliminar registros después de confirmar.
+- Control de registro y Detalle diario de caja muestran la fecha como
+  DD/MM/AAAA. Las tablas de Inventario y Compras muestran el vencimiento como
+  MM/AAAA o NA cuando no hay vencimiento; la captura conserva el selector de
+  fecha del calendario.
+- Control de registro presenta el equivalente como "Monto Total USD". Detalle
+  mensual de caja separa ingresos y egresos en Bs. y USD e incluye el monto
+  equivalente total en USD. Res. mensual ingresos solo presenta ingresos de
+  Venta y Alquiler, primero las ventas y luego los alquileres de cada mes,
+  con una fila de totales independiente y resaltada al cierre de cada servicio
+  en cada mes. La cantidad no se suma en esas filas.
+- El detalle diario muestra la cantidad vendida junto a la descripción y suma
+  al final cada columna de ingresos y egresos. El detalle mensual y el resumen
+  mensual también muestran totales al final, manteniendo separados los montos
+  en bolívares y dólares.
+- "Exportar CSV" descarga los registros contables que coinciden con los filtros.
+  Cada reporte tiene además el botón "Exportar este reporte a Excel", que
+  descarga el reporte visible con sus encabezados y totales en un CSV compatible
+  con Excel.
+- Al registrar una venta, se descuentan las existencias y se prepara un ingreso
+  en Contabilidad con la descripción, el monto en USD y el tipo "Venta". El
+  registro contable no se guarda automáticamente: completa tasa y método de
+  pago, revisa la información y pulsa "Guardar registro".
+- La tabla contable carga todos los registros por páginas; las demás tablas
+  muestran hasta 200 filas. La exportación de inventario incluye todo el
+  inventario.
+- Para actualizar la web, ejecuta primero el SQL actualizado en Supabase.
+  Después reemplaza index.html, styles.css y app.js en el repositorio para
+  habilitar las nuevas funciones. El SQL no elimina las tablas ni sus registros.
