@@ -400,6 +400,13 @@ td {
     white-space: nowrap;
 }
 
+.table-wrap td.description-cell {
+    max-width: 260px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
 th {
     position: sticky;
     top: 0;
@@ -534,4 +541,5 @@ tbody tr:last-child td {
     td {
         padding: 8px;
     }
+
 }

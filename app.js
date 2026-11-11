@@ -167,6 +167,9 @@
             const rowElement = document.createElement("tr");
             columns.forEach(function (column) {
                 const cell = document.createElement("td");
+                if (column === "descripcion") {
+                    cell.classList.add("description-cell");
+                }
                 if (column === "fecha_vencimiento") {
                     cell.textContent = formatExpiryDate(row[column]);
                 } else if (tableName === "cuentas_por_cobrar" && column === "monto_usd") {
