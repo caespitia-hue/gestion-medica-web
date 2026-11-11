@@ -167,9 +167,13 @@
             const rowElement = document.createElement("tr");
             columns.forEach(function (column) {
                 const cell = document.createElement("td");
-                cell.textContent = tableName === "cuentas_por_cobrar" && column === "monto_usd"
-                    ? formatAccountingAmount(row[column], "USD")
-                    : displayValue(row[column]);
+                if (column === "fecha_vencimiento") {
+                    cell.textContent = formatExpiryDate(row[column]);
+                } else if (tableName === "cuentas_por_cobrar" && column === "monto_usd") {
+                    cell.textContent = formatAccountingAmount(row[column], "USD");
+                } else {
+                    cell.textContent = displayValue(row[column]);
+                }
                 rowElement.append(cell);
             });
             if (supportsDeletion || supportsCollection) {
@@ -585,6 +589,19 @@
         return String(record.fecha || "").slice(0, 10);
     }
 
+    function formatReportDate(date) {
+        const match = String(date || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        return match ? match[3] + "/" + match[2] + "/" + match[1] : String(date || "");
+    }
+
+    function formatExpiryDate(date) {
+        if (!date) {
+            return "NA";
+        }
+        const match = String(date).match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+        return match ? match[2] + "/" + match[1] : String(date);
+    }
+
     function getFilteredAccountingRecords() {
         const from = document.getElementById("accounting-filter-from").value;
         const to = document.getElementById("accounting-filter-to").value;
@@ -776,7 +793,7 @@
                     record: record,
                     values: [
                         record.id,
-                        accountingDate(record),
+                        formatReportDate(accountingDate(record)),
                         record.descripcion,
                         record.cantidad,
                         accountingReportValue(record, amountInRecordCurrency(record)),
@@ -815,7 +832,7 @@
                 dailyTotals[index] += amount;
                 values[index] = formatAccountingAmount(amount, isBs ? "Bs." : "USD");
                 return {
-                    values: [accountingDate(record), record.descripcion, record.cantidad]
+                    values: [formatReportDate(accountingDate(record)), record.descripcion, record.cantidad]
                         .concat(values, [record.observaciones])
                 };
             });
