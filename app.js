@@ -142,6 +142,7 @@
         }
 
         const table = document.createElement("table");
+        table.dataset.tableName = tableName;
         const head = document.createElement("thead");
         const headRow = document.createElement("tr");
         const columns = tableColumns[tableName];
@@ -151,6 +152,7 @@
         columns.forEach(function (column) {
             const cell = document.createElement("th");
             cell.scope = "col";
+            cell.className = "column-" + column;
             const label = tableColumnLabels[tableName][column] || column.replace(/_/g, " ");
             if (column === "precio_compra" || column === "precio_venta") {
                 cell.classList.add("price-header");
@@ -182,6 +184,7 @@
             const rowElement = document.createElement("tr");
             columns.forEach(function (column) {
                 const cell = document.createElement("td");
+                cell.classList.add("column-" + column);
                 if (column === "descripcion") {
                     cell.classList.add("description-cell");
                     const description = document.createElement("span");
@@ -718,11 +721,15 @@
         }
 
         const table = document.createElement("table");
+        table.className = "accounting-report-table";
         const head = document.createElement("thead");
         const headRow = document.createElement("tr");
         headers.forEach(function (header) {
             const cell = document.createElement("th");
             cell.scope = "col";
+            if (header === "Descripción") {
+                cell.classList.add("description-column");
+            }
             cell.textContent = header;
             headRow.append(cell);
         });
@@ -749,9 +756,17 @@
             if (row.className) {
                 rowElement.className = row.className;
             }
-            row.values.forEach(function (value) {
+            row.values.forEach(function (value, index) {
                 const cell = document.createElement("td");
-                cell.textContent = displayValue(value);
+                if (headers[index] === "Descripción") {
+                    cell.classList.add("description-cell");
+                    const description = document.createElement("span");
+                    description.className = "description-text";
+                    description.textContent = displayValue(value);
+                    cell.append(description);
+                } else {
+                    cell.textContent = displayValue(value);
+                }
                 rowElement.append(cell);
             });
             if (actionRows) {

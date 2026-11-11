@@ -401,18 +401,64 @@ td {
 }
 
 .table-wrap td.description-cell {
-    width: 260px;
-    max-width: 260px;
+    width: 360px;
+    max-width: 360px;
     white-space: normal;
 }
 
 .table-wrap .description-text {
     display: block;
-    width: 230px;
-    max-width: 230px;
+    width: 330px;
+    max-width: 330px;
     white-space: normal;
     overflow-wrap: anywhere;
     line-height: 1.4;
+}
+
+#table-inventario table {
+    table-layout: fixed;
+}
+
+#table-inventario th.column-codigo,
+#table-inventario td.column-codigo {
+    width: 100px;
+}
+
+#table-inventario th.column-precio_compra,
+#table-inventario td.column-precio_compra,
+#table-inventario th.column-precio_venta,
+#table-inventario td.column-precio_venta {
+    width: 112px;
+}
+
+#table-inventario th.column-cantidad,
+#table-inventario td.column-cantidad {
+    width: 82px;
+}
+
+#table-inventario th.column-fecha_vencimiento,
+#table-inventario td.column-fecha_vencimiento {
+    width: 90px;
+}
+
+#table-inventario td.description-cell {
+    width: auto;
+    max-width: none;
+}
+
+#table-inventario .description-text {
+    width: 100%;
+    max-width: none;
+}
+
+.accounting-report-table td.description-cell {
+    width: 360px;
+    max-width: 360px;
+}
+
+.accounting-report-table .description-text {
+    width: 330px;
+    max-width: 330px;
 }
 
 .table-wrap th.price-header {
@@ -577,6 +623,20 @@ tbody tr:last-child td {
 
     .table-wrap td.price-cell {
         min-width: 88px;
+    }
+
+    #table-inventario table {
+        min-width: 620px;
+    }
+
+    .accounting-report-table td.description-cell {
+        width: 180px;
+        max-width: 180px;
+    }
+
+    .accounting-report-table .description-text {
+        width: 150px;
+        max-width: 150px;
     }
 
     th,
