@@ -402,6 +402,30 @@ textarea:focus {
     box-shadow: 0 3px 10px rgb(18 59 99 / 4%);
 }
 
+.inventory-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-top: 1px solid #e2ebf1;
+}
+
+.inventory-pagination-summary {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.inventory-pagination-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.inventory-pagination .button:disabled {
+    cursor: not-allowed;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -630,6 +654,11 @@ tbody tr:last-child td {
     .table-wrap td.description-cell {
         width: 180px;
         max-width: 180px;
+    }
+
+    .inventory-pagination {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .table-wrap .description-text {

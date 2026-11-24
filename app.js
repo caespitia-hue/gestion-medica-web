@@ -10,6 +10,9 @@
     const productsByCode = new Map();
     const accountingRecords = [];
     const receivablesById = new Map();
+    const inventoryPageSize = 10;
+    let inventoryRecords = [];
+    let inventoryPage = 0;
     let client;
     let pendingInventoryImport = null;
     let editingAccountingId = null;
@@ -237,6 +240,54 @@
         container.append(table);
     }
 
+    function renderInventoryPage() {
+        const pageCount = Math.ceil(inventoryRecords.length / inventoryPageSize);
+        inventoryPage = Math.min(inventoryPage, Math.max(0, pageCount - 1));
+        const firstIndex = inventoryPage * inventoryPageSize;
+        const pageRows = inventoryRecords.slice(firstIndex, firstIndex + inventoryPageSize);
+        renderTable("inventario", pageRows);
+
+        if (!inventoryRecords.length) {
+            return;
+        }
+
+        const pagination = document.createElement("nav");
+        pagination.className = "inventory-pagination";
+        pagination.setAttribute("aria-label", "Paginación del inventario");
+
+        const summary = document.createElement("p");
+        summary.className = "inventory-pagination-summary";
+        summary.setAttribute("aria-live", "polite");
+        summary.textContent = "Mostrando insumos " + (firstIndex + 1) + "-"
+            + (firstIndex + pageRows.length) + " de " + inventoryRecords.length;
+
+        const controls = document.createElement("div");
+        controls.className = "inventory-pagination-controls";
+        const previousButton = document.createElement("button");
+        previousButton.className = "button button-secondary";
+        previousButton.type = "button";
+        previousButton.textContent = "Anterior";
+        previousButton.disabled = inventoryPage === 0;
+        previousButton.addEventListener("click", function () {
+            inventoryPage -= 1;
+            renderInventoryPage();
+        });
+
+        const nextButton = document.createElement("button");
+        nextButton.className = "button button-secondary";
+        nextButton.type = "button";
+        nextButton.textContent = "Siguiente";
+        nextButton.disabled = inventoryPage >= pageCount - 1;
+        nextButton.addEventListener("click", function () {
+            inventoryPage += 1;
+            renderInventoryPage();
+        });
+
+        controls.append(previousButton, nextButton);
+        pagination.append(summary, controls);
+        document.getElementById("table-inventario").append(pagination);
+    }
+
     async function loadTable(tableName) {
         clearNotice();
         if (tableName === "contabilidad") {
@@ -300,24 +351,41 @@
             return;
         }
 
-        const query = client.from(tableName).select("*").limit(200);
         if (tableName === "inventario") {
-            query.order("codigo", { ascending: true });
+            const products = [];
+            const pageSize = 1000;
+            for (let offset = 0; ; offset += pageSize) {
+                const result = await client.from(tableName)
+                    .select("*")
+                    .order("codigo", { ascending: true })
+                    .range(offset, offset + pageSize - 1);
+                if (result.error) {
+                    throw result.error;
+                }
+                products.push.apply(products, result.data || []);
+                if (!result.data || result.data.length < pageSize) {
+                    break;
+                }
+            }
+
+            inventoryRecords = products;
+            inventoryPage = 0;
+            productsByCode.clear();
+            inventoryRecords.forEach(function (product) {
+                productsByCode.set(product.codigo, product);
+            });
+            renderInventoryPage();
+            refreshProductOptions();
+            return;
         }
+
+        const query = client.from(tableName).select("*").limit(200);
 
         const result = await query;
         if (result.error) {
             throw result.error;
         }
         renderTable(tableName, result.data || []);
-
-        if (tableName === "inventario") {
-            productsByCode.clear();
-            (result.data || []).forEach(function (product) {
-                productsByCode.set(product.codigo, product);
-            });
-            refreshProductOptions();
-        }
     }
 
     async function loadAllTables() {
