@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#123b63">
     <title>Gestión Médica</title>
-    <link rel="stylesheet" href="styles.css?v=20261124-1">
+    <link rel="stylesheet" href="styles.css?v=20261128-1">
 </head>
 <body>
     <main class="page">
@@ -53,7 +53,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>Inventario</h2>
-                        <p class="muted">Existencias y precios actuales.</p>
+                        <p class="muted">Existencias y precios actuales por depósito. Un mismo código puede aparecer en IG y YU.</p>
                     </div>
                     <div class="inventory-actions">
                         <button id="export-inventory" class="button button-secondary" type="button">Exportar CSV para Excel</button>
@@ -62,7 +62,7 @@
                         <button class="button button-secondary refresh" type="button" data-table="inventario">Actualizar lista</button>
                     </div>
                 </div>
-                <p class="muted import-help">La importación reemplaza los datos y las existencias de los códigos existentes. Las filas nuevas sin código reciben uno automáticamente. No crea registros de compras ni contabilidad.</p>
+                <p class="muted import-help">La importación reemplaza los datos y las existencias de cada combinación de código y depósito. Las filas nuevas sin código reciben uno automáticamente; si falta la columna Depósito se asigna IG. No crea registros de compras ni contabilidad.</p>
                 <div id="inventory-import-preview" class="import-preview hidden" role="region" aria-label="Vista previa de importación">
                     <p id="inventory-import-summary"></p>
                     <ul id="inventory-import-items"></ul>
@@ -105,6 +105,13 @@
                         <input id="purchase-description" maxlength="250" autocomplete="off">
                     </label>
                     <label class="field">
+                        Depósito
+                        <select id="purchase-depot">
+                            <option value="IG">IG</option>
+                            <option value="YU">YU</option>
+                        </select>
+                    </label>
+                    <label class="field">
                         Precio de compra (US$)
                         <input id="purchase-cost" type="number" min="0" step="0.01" required>
                     </label>
@@ -136,9 +143,16 @@
                 </div>
                 <form id="sale-form" class="form-grid">
                     <label class="field field-wide">
-                        Producto disponible
+                        Producto
                         <select id="sale-product" required></select>
                         <span id="sale-product-description" class="product-description-preview" aria-live="polite"></span>
+                    </label>
+                    <label class="field">
+                        Depósito de salida
+                        <select id="sale-depot">
+                            <option value="IG">IG</option>
+                            <option value="YU">YU</option>
+                        </select>
                     </label>
                     <label class="field">
                         Precio de venta (US$)
@@ -333,6 +347,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="app.js?v=20261124-1"></script>
+    <script src="app.js?v=20261128-1"></script>
 </body>
 </html>

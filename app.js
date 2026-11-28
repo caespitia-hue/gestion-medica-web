@@ -8,6 +8,7 @@
     const notice = document.getElementById("notice");
     const signOutButton = document.getElementById("sign-out");
     const productsByCode = new Map();
+    const productsByCodeAndDepot = new Map();
     const accountingRecords = [];
     const receivablesById = new Map();
     const inventoryPageSize = 10;
@@ -20,9 +21,9 @@
     let accountingReportName = "control";
 
     const tableColumns = {
-        inventario: ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
-        compras: ["codigo", "descripcion", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
-        ventas: ["codigo", "descripcion", "cantidad", "precio_venta", "total", "fecha"],
+        inventario: ["codigo", "descripcion", "deposito", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"],
+        compras: ["codigo", "descripcion", "deposito", "precio_compra", "precio_venta", "fecha_vencimiento", "cantidad"],
+        ventas: ["codigo", "descripcion", "deposito", "cantidad", "precio_venta", "total", "fecha"],
         cuentas_por_cobrar: ["fecha", "descripcion", "cantidad", "monto_usd", "observaciones"],
         contabilidad: ["id", "fecha", "descripcion", "cantidad", "monto", "moneda", "tasa_bcv", "tipo_pago", "metodo_pago", "tipo_servicio", "monto_usd", "observaciones"]
     };
@@ -31,6 +32,7 @@
         inventario: {
             codigo: "Código",
             descripcion: "Descripción",
+            deposito: "Depósito",
             precio_compra: "Precio de compra (US$)",
             precio_venta: "Precio de venta (US$)",
             cantidad: "Existencias",
@@ -39,6 +41,7 @@
         compras: {
             codigo: "Código",
             descripcion: "Descripción",
+            deposito: "Depósito",
             precio_compra: "Precio de compra (US$)",
             precio_venta: "Precio de venta (US$)",
             fecha_vencimiento: "Vencimiento",
@@ -47,6 +50,7 @@
         ventas: {
             codigo: "Código",
             descripcion: "Descripción",
+            deposito: "Depósito",
             cantidad: "Cantidad vendida",
             precio_venta: "Precio de venta (US$)",
             total: "Total (US$)",
@@ -218,6 +222,7 @@
                 deleteButton.dataset.action = actionName;
                 deleteButton.dataset.recordId = String(row.id || "");
                 deleteButton.dataset.code = String(row.codigo || "");
+                deleteButton.dataset.depot = String(row.deposito || "");
                 deleteButton.dataset.quantity = String(row.cantidad || "");
                 deleteButton.textContent = supportsCollection ? "Registrar cobro" : "Eliminar";
                 deleteButton.setAttribute(
@@ -358,6 +363,7 @@
                 const result = await client.from(tableName)
                     .select("*")
                     .order("codigo", { ascending: true })
+                    .order("deposito", { ascending: true })
                     .range(offset, offset + pageSize - 1);
                 if (result.error) {
                     throw result.error;
@@ -371,8 +377,13 @@
             inventoryRecords = products;
             inventoryPage = 0;
             productsByCode.clear();
+            productsByCodeAndDepot.clear();
             inventoryRecords.forEach(function (product) {
-                productsByCode.set(product.codigo, product);
+                const key = productKey(product.codigo, product.deposito);
+                productsByCodeAndDepot.set(key, product);
+                if (!productsByCode.has(product.codigo)) {
+                    productsByCode.set(product.codigo, product);
+                }
             });
             renderInventoryPage();
             refreshProductOptions();
@@ -396,25 +407,15 @@
 
     function refreshProductOptions() {
         const existingSelect = document.getElementById("purchase-product");
-        const saleSelect = document.getElementById("sale-product");
         existingSelect.replaceChildren();
-        saleSelect.replaceChildren();
 
         productsByCode.forEach(function (product) {
             const purchaseOption = document.createElement("option");
             purchaseOption.value = product.codigo;
             purchaseOption.textContent = product.codigo + " - " + product.descripcion;
             existingSelect.append(purchaseOption);
-
-            if (Number(product.cantidad) > 0) {
-                const saleOption = document.createElement("option");
-                saleOption.value = product.codigo;
-                saleOption.textContent = product.codigo + " - " + product.descripcion
-                    + " (disp.: " + product.cantidad
-                    + ", precio actual: " + formatPrice(product.precio_venta) + ")";
-                saleSelect.append(saleOption);
-            }
         });
+        refreshSaleProductOptions();
 
         document.getElementById("purchase-product-field").classList.toggle(
             "hidden",
@@ -432,14 +433,38 @@
             });
         }
 
+        updatePurchaseProductDescription();
+    }
+
+    function refreshSaleProductOptions() {
+        const saleSelect = document.getElementById("sale-product");
+        const depot = document.getElementById("sale-depot").value;
+        const previousCode = saleSelect.value;
+        saleSelect.replaceChildren();
+
+        productsByCode.forEach(function (product) {
+            const stock = productsByCodeAndDepot.get(productKey(product.codigo, depot));
+            if (stock && Number(stock.cantidad) > 0) {
+                const saleOption = document.createElement("option");
+                saleOption.value = product.codigo;
+                saleOption.textContent = product.codigo + " - " + product.descripcion
+                    + " (disp.: " + stock.cantidad + ")";
+                saleSelect.append(saleOption);
+            }
+        });
+
+        if (previousCode && Array.from(saleSelect.options).some(function (option) {
+            return option.value === previousCode;
+        })) {
+            saleSelect.value = previousCode;
+        }
         if (!saleSelect.options.length) {
             const option = document.createElement("option");
             option.value = "";
-            option.textContent = "No hay productos con existencias";
+            option.textContent = "No hay productos con existencias en " + depot;
             saleSelect.append(option);
         }
         updateSalePrice();
-        updatePurchaseProductDescription();
     }
 
     function updatePurchaseProductDescription() {
@@ -447,6 +472,10 @@
         document.getElementById("purchase-product-description").textContent = product
             ? product.descripcion
             : "";
+    }
+
+    function productKey(code, depot) {
+        return JSON.stringify([code, depot]);
     }
 
     async function updateNewProductCode() {
@@ -486,6 +515,7 @@
 
         try {
             const mode = document.getElementById("purchase-mode").value;
+            const depot = document.getElementById("purchase-depot").value;
             const code = mode === "new"
                 ? document.getElementById("purchase-code").value.trim()
                 : document.getElementById("purchase-product").value;
@@ -502,19 +532,20 @@
             let salePrice = selectedNumber("purchase-price");
             let priceNotice = "";
             if (product) {
+                const depotProduct = productsByCodeAndDepot.get(productKey(code, depot));
                 const currentPriceResult = await client
                     .from("inventario")
                     .select("precio_venta")
                     .eq("codigo", code)
-                    .single();
+                    .eq("deposito", depot)
+                    .maybeSingle();
                 if (currentPriceResult.error) {
                     throw currentPriceResult.error;
                 }
-                if (!currentPriceResult.data) {
-                    throw new Error("No se encontró el producto en el inventario. Actualiza la información e intenta de nuevo.");
-                }
 
-                const currentPriceValue = currentPriceResult.data.precio_venta;
+                const currentPriceValue = currentPriceResult.data
+                    ? currentPriceResult.data.precio_venta
+                    : depotProduct ? depotProduct.precio_venta : product.precio_venta;
                 const currentPrice = Number(currentPriceValue);
                 if (
                     currentPriceValue === null
@@ -550,6 +581,7 @@
 
             const result = await client.rpc("registrar_compra", {
                 p_codigo: code,
+                p_deposito: depot,
                 p_descripcion: description,
                 p_precio_compra: selectedNumber("purchase-cost"),
                 p_precio_venta: salePrice,
@@ -578,7 +610,10 @@
 
     function updateSalePrice() {
         const code = document.getElementById("sale-product").value;
-        const product = productsByCode.get(code);
+        const depot = document.getElementById("sale-depot").value;
+        const product = productsByCodeAndDepot.get(productKey(code, depot))
+            || productsByCode.get(code);
+        const stock = productsByCodeAndDepot.get(productKey(code, depot));
         document.getElementById("sale-product-description").textContent = product
             ? product.descripcion
             : "";
@@ -591,7 +626,8 @@
             && price >= 0;
         document.getElementById("sale-price").value = hasPrice ? product.precio_venta : "";
         document.getElementById("sale-current-price").textContent = product
-            ? "Precio actual en inventario: " + formatPrice(product.precio_venta)
+            ? "Existencias en " + depot + ": " + (stock ? stock.cantidad : 0)
+                + ". Precio actual: " + formatPrice(product.precio_venta)
             : "Precio actual en inventario: —";
         updateSaleTotal();
     }
@@ -611,7 +647,8 @@
 
         try {
             const code = document.getElementById("sale-product").value;
-            const product = productsByCode.get(code);
+            const depot = document.getElementById("sale-depot").value;
+            const product = productsByCodeAndDepot.get(productKey(code, depot));
             const quantity = positiveInteger("sale-quantity");
             if (!product) {
                 throw new Error("Selecciona un producto disponible.");
@@ -628,6 +665,7 @@
             }
             const result = await client.rpc("registrar_venta", {
                 p_codigo: code,
+                p_deposito: depot,
                 p_cantidad: quantity,
                 p_precio_venta: salePrice,
                 p_fecha: localDateISO(),
@@ -1234,7 +1272,14 @@
         const recordId = button.dataset.recordId;
         const quantity = Number(button.dataset.quantity);
         const code = button.dataset.code;
-        if (!/^[1-9]\d*$/.test(recordId) || !Number.isSafeInteger(quantity) || quantity <= 0 || !code) {
+        const depot = button.dataset.depot;
+        if (
+            !/^[1-9]\d*$/.test(recordId)
+            || !Number.isSafeInteger(quantity)
+            || quantity <= 0
+            || !code
+            || !["IG", "YU"].includes(depot)
+        ) {
             throw new Error("No se pudo identificar el movimiento. Actualiza la lista e intenta de nuevo.");
         }
 
@@ -1242,9 +1287,11 @@
         const movementName = isPurchase ? "compra" : "venta";
         const question = isPurchase
             ? "¿Eliminar esta compra de " + quantity + " unidad(es) del producto " + code
+                + " en el depósito " + depot
                 + "?\n\nSe descontarán esas unidades del inventario. Si no hay suficientes existencias, "
                 + "el sistema impedirá el borrado."
             : "¿Eliminar esta venta de " + quantity + " unidad(es) del producto " + code
+                + " en el depósito " + depot
                 + "?\n\nLas unidades se devolverán al inventario.";
         if (!window.confirm(question + "\n\nEsta acción no se puede deshacer.")) {
             return;
@@ -1570,6 +1617,7 @@
         const columnAliases = {
             codigo: ["codigo", "codigoproducto"],
             descripcion: ["descripcion", "producto"],
+            deposito: ["deposito", "ubicacion"],
             precio_compra: ["preciocompra"],
             precio_venta: ["precioventa"],
             cantidad: ["cantidad", "existencia", "existencias"],
@@ -1588,7 +1636,7 @@
                 + ". Exporta primero el inventario para obtener el formato correcto.");
         }
 
-        const seenCodes = new Set();
+        const seenProducts = new Set();
         const products = rows.slice(1).map(function (values, index) {
             const lineNumber = index + 2;
             const get = function (column) {
@@ -1597,14 +1645,20 @@
             };
             const code = get("codigo");
             const description = get("descripcion");
+            const depot = get("deposito").toLocaleUpperCase() || "IG";
             if (!description) {
                 throw new Error("La descripción es obligatoria (fila " + lineNumber + ").");
             }
-            if (code && seenCodes.has(code)) {
-                throw new Error("El código " + code + " aparece más de una vez (fila " + lineNumber + ").");
+            if (!["IG", "YU"].includes(depot)) {
+                throw new Error("El depósito debe ser IG o YU (fila " + lineNumber + ").");
             }
             if (code) {
-                seenCodes.add(code);
+                const key = productKey(code, depot);
+                if (seenProducts.has(key)) {
+                    throw new Error("El código " + code + " aparece más de una vez en el depósito "
+                        + depot + " (fila " + lineNumber + ").");
+                }
+                seenProducts.add(key);
             }
 
             const quantity = parseCsvNumber(get("cantidad"), "cantidad", lineNumber);
@@ -1614,6 +1668,7 @@
             return {
                 codigo: code,
                 descripcion: description,
+                deposito: depot,
                 precio_compra: parseCsvNumber(get("precio_compra"), "precio_compra", lineNumber),
                 precio_venta: parseCsvNumber(get("precio_venta"), "precio_venta", lineNumber),
                 cantidad: quantity,
@@ -1637,8 +1692,9 @@
         const pageSize = 1000;
         for (let offset = 0; ; offset += pageSize) {
             const result = await client.from("inventario")
-                .select("codigo,descripcion,precio_compra,precio_venta,cantidad,fecha_vencimiento")
+                .select("codigo,descripcion,deposito,precio_compra,precio_venta,cantidad,fecha_vencimiento")
                 .order("codigo", { ascending: true })
+                .order("deposito", { ascending: true })
                 .range(offset, offset + pageSize - 1);
             if (result.error) {
                 throw result.error;
@@ -1649,7 +1705,7 @@
             }
         }
 
-        const headers = ["codigo", "descripcion", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"];
+        const headers = ["codigo", "descripcion", "deposito", "precio_compra", "precio_venta", "cantidad", "fecha_vencimiento"];
         const lines = ["sep=;" + "\r\n" + headers.map(csvField).join(";")];
         products.forEach(function (product) {
             lines.push(headers.map(function (column) {
@@ -1677,13 +1733,13 @@
 
         for (let offset = 0; offset < codes.length; offset += 100) {
             const result = await client.from("inventario")
-                .select("codigo,cantidad")
+                .select("codigo,deposito,cantidad")
                 .in("codigo", codes.slice(offset, offset + 100));
             if (result.error) {
                 throw result.error;
             }
             (result.data || []).forEach(function (product) {
-                existing.set(product.codigo, product);
+                existing.set(productKey(product.codigo, product.deposito), product);
             });
         }
         return existing;
@@ -1710,7 +1766,8 @@
             const products = parseInventoryCsv(await file.text());
             const existingProducts = await findExistingInventory(products);
             const existingCount = products.filter(function (product) {
-                return product.codigo && existingProducts.has(product.codigo);
+                return product.codigo
+                    && existingProducts.has(productKey(product.codigo, product.deposito));
             }).length;
             const newCount = products.length - existingCount;
             const codesToGenerate = products.filter(function (product) { return !product.codigo; }).length;
@@ -1723,10 +1780,12 @@
             const items = document.getElementById("inventory-import-items");
             items.replaceChildren();
             products.slice(0, 10).forEach(function (product) {
-                const current = product.codigo ? existingProducts.get(product.codigo) : null;
+                const current = product.codigo
+                    ? existingProducts.get(productKey(product.codigo, product.deposito))
+                    : null;
                 const item = document.createElement("li");
                 item.textContent = (product.codigo || "Código automático")
-                    + " — " + product.descripcion
+                    + " — " + product.descripcion + " (" + product.deposito + ")"
                     + (current ? ": cantidad " + current.cantidad + " → " + product.cantidad : ": nueva cantidad " + product.cantidad);
                 items.append(item);
             });
@@ -1954,6 +2013,8 @@
             });
         });
         document.getElementById("sale-product").addEventListener("change", updateSalePrice);
+        document.getElementById("sale-depot").addEventListener("change", refreshSaleProductOptions);
+        document.getElementById("purchase-depot").addEventListener("change", updatePurchaseProductDescription);
         document.getElementById("purchase-product").addEventListener(
             "change",
             updatePurchaseProductDescription
